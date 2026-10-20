@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "verification-report.schema.json",
+  "title": "VerificationReport",
+  "description": "Stage 03 output. Independent audit: each decision-critical claim gets a closed status, a reason, and evidence references. Confidence is a word-level judgment, advisory until calibrated by evaluation — never a calibrated number.",
+  "type": "object",
+  "required": ["artifact", "run_id", "results", "gate"],
+  "additionalProperties": false,
+  "properties": {
+    "artifact": { "enum": ["VerificationReport"] },
+    "run_id": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-[a-z0-9-]+$" },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["result_id", "claim", "evidence_ids", "status", "reason", "confidence"],
+        "additionalProperties": false,
+        "properties": {
+          "result_id": { "type": "string", "pattern": "^V[0-9]+$" },
+          "claim": { "type": "string", "minLength": 1, "description": "The claim being checked, stated so it can be compared against sources verbatim." },
+          "evidence_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^E[0-9]+$" }
+          },
+          "status": { "enum": ["verified", "partially_supported", "contradicted", "unresolved"] },
+          "reason": { "type": "string", "minLength": 1, "description": "What the independent check found — including staleness, weak sourcing, or a source that does not actually support the claim." },
+          "confidence": { "enum": ["high", "medium", "low"] }
+        }
+      }
+    },
+    "unresolved_questions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "gate": { "$ref": "gate.schema.json#/definitions/gate" }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "research-plan.schema.json",
+  "title": "ResearchPlan",
+  "description": "Stage 01 output. Decomposes the query into research questions with success criteria and a search strategy, before any searching happens.",
+  "type": "object",
+  "required": ["artifact", "run_id", "query", "research_questions", "search_strategy", "required_evidence", "gate"],
+  "additionalProperties": false,
+  "properties": {
+    "artifact": { "enum": ["ResearchPlan"] },
+    "run_id": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-[a-z0-9-]+$" },
+    "query": { "type": "string", "minLength": 1 },
+    "scope_constraints": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "research_questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "question", "priority", "success_criteria"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^RQ[0-9]+$" },
+          "question": { "type": "string", "minLength": 1 },
+          "priority": { "enum": ["high", "medium", "low"] },
+          "success_criteria": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "search_strategy": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["question_id", "queries"],
+        "additionalProperties": false,
+        "properties": {
+          "question_id": { "type": "string", "pattern": "^RQ[0-9]+$" },
+          "queries": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "source_types": {
+            "type": "array",
+            "items": { "enum": ["official", "primary", "independent", "community"] }
+          }
+        }
+      }
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "gate": { "$ref": "gate.schema.json#/definitions/gate" }
+  }
+}

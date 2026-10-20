@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gate.schema.json",
+  "title": "Human gate record",
+  "description": "Every artifact carries a gate. The next stage may not start until gate.approved is true. approved_by and date record who read the output and when.",
+  "definitions": {
+    "gate": {
+      "type": "object",
+      "required": ["approved"],
+      "additionalProperties": false,
+      "properties": {
+        "approved": { "type": "boolean" },
+        "approved_by": { "type": "string", "minLength": 1 },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

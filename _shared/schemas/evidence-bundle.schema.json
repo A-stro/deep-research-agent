@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "evidence-bundle.schema.json",
+  "title": "EvidenceBundle",
+  "description": "Stage 02 output. One record per atomic claim-source pair, with provenance and a credibility note. Unknown dates and credibility stay explicitly 'unknown' — never invented.",
+  "type": "object",
+  "required": ["artifact", "run_id", "records", "gaps", "gate"],
+  "additionalProperties": false,
+  "properties": {
+    "artifact": { "enum": ["EvidenceBundle"] },
+    "run_id": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-[a-z0-9-]+$" },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["evidence_id", "question_id", "claim", "source_title", "source_url", "retrieved_evidence", "source_type", "credibility", "support_relation"],
+        "additionalProperties": false,
+        "properties": {
+          "evidence_id": { "type": "string", "pattern": "^E[0-9]+$" },
+          "question_id": { "type": "string", "pattern": "^RQ[0-9]+$" },
+          "claim": { "type": "string", "minLength": 1, "description": "Atomic claim this source speaks to — one idea, not a paragraph." },
+          "source_title": { "type": "string", "minLength": 1 },
+          "source_url": { "type": "string", "pattern": "^https?://" },
+          "publisher": { "type": "string" },
+          "publication_date": { "type": "string", "pattern": "^(unknown|[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]))$" },
+          "retrieved_evidence": { "type": "string", "minLength": 1, "description": "Exact excerpt or precise locator (section/paragraph/line) from the retrieved page. A search snippet is not sufficient." },
+          "source_type": { "enum": ["official", "primary", "independent", "community", "unknown"] },
+          "credibility": { "type": "string", "minLength": 1, "description": "Assessment note, or the literal word 'unknown'. No numeric scores." },
+          "support_relation": { "enum": ["supports", "contradicts", "contextual", "unclear"] },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["question_id", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "question_id": { "type": "string", "pattern": "^RQ[0-9]+$" },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "gate": { "$ref": "gate.schema.json#/definitions/gate" }
+  }
+}
