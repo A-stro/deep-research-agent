@@ -1,0 +1,202 @@
+{
+  "artifact": "VerificationReport",
+  "run_id": "2026-10-22-stack-dep-health",
+  "results": [
+    {
+      "result_id": "V1",
+      "evidence_ids": [
+        "E1"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "pi-web-access's latest published version is 0.44.0, published 2026-10-21, with no deprecation notice on the registry entry for that version.",
+      "reason": "Fetched https://registry.npmjs.org/pi-web-access raw and searched the full 190K-char packument: dist-tags.latest = \"0.44.0\"; time[\"0.44.0\"] = \"2026-10-21T05:34:59.898Z\"; the string \"deprecated\" occurs zero times anywhere in the document, so no deprecation flag exists on any version. Repository field confirms github.com/nicobailon/pi-web-access. Matches the record on every component; no newer version exists."
+    },
+    {
+      "result_id": "V2",
+      "evidence_ids": [
+        "E2"
+      ],
+      "status": "contradicted",
+      "confidence": "high",
+      "claim": "pi-subagents's latest published version is 0.80.0, published 2026-10-21, with no deprecation notice.",
+      "reason": "Fetched https://registry.npmjs.org/pi-subagents raw: dist-tags.latest is now **0.81.0**, published 2026-10-22T20:21:26.540Z — a version published after the record's 2026-10-22 query, so the record's \"latest is 0.80.0\" is stale. The rest of the record holds: time[\"0.80.0\"] = \"2026-10-21T06:40:05.912Z\" exactly as recorded, \"deprecated\" occurs zero times in the packument, and the repository field is github.com/nicobailon/pi-subagents. Counterevidence check on the new version: both agents/researcher.md and agents/evidence-auditor.md fetched successfully at 0.81.0 with content identical to 0.80.0, and the v0.81.0 GitHub release notes (fetched) contain only Windows startup bundling, a Windows freeze fix, a structured_output retry turn for children, notice tagging, FleetView mouse support, a YAML frontmatter fix, and a mission.show fix — nothing removes the roles or delegation modes the pipeline assumes. The report must state 0.81.0 as the current version (installed-vs-current delta is 0.79.1 → 0.81.0, two versions, not one)."
+    },
+    {
+      "result_id": "V3",
+      "evidence_ids": [
+        "E3"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "@zhushanwen/pi-structured-output's latest published version is 6.2.2, published 2026-10-21, with no deprecation notice and no repository field.",
+      "reason": "Fetched https://registry.npmjs.org/@zhushanwen%2fpi-structured-output raw and searched the full 70K-char packument: dist-tags.latest = \"6.2.2\" (plus a \"dev\" tag pointing at 5.0.0-dev.0); time[\"6.2.2\"] = \"2026-10-21T07:06:07.933Z\"; the strings \"deprecated\", \"repository\", and \"homepage\" occur zero times anywhere in the document. Matches the record on every component; no newer version exists."
+    },
+    {
+      "result_id": "V4",
+      "evidence_ids": [
+        "E4"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "pi-workflow-engine's latest published version is 1.2.0, published 2026-10-20, with no deprecation notice.",
+      "reason": "Fetched https://registry.npmjs.org/pi-workflow-engine raw: dist-tags.latest = \"1.2.0\"; time[\"1.2.0\"] = \"2026-10-20T14:03:00.689Z\"; \"deprecated\" occurs zero times in the packument; repository field is github.com/timbrinded/pi-workflow-engine. Matches the record exactly; no newer version exists."
+    },
+    {
+      "result_id": "V5",
+      "evidence_ids": [
+        "E5"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "pi-web-access 0.44.0 still registers the four tools the stage contracts assume: web_search, fetch_content, source_check, and get_search_content.",
+      "reason": "Fetched https://unpkg.com/pi-web-access@0.44.0/README.md (134,723 chars stored; tool sections read directly and the whole file searched): it carries dedicated documentation sections for web_search, fetch_content, get_search_content, and source_check, and its MCP section lists the same four tools. The record's quoted sentence was found verbatim: \"`web_search`, `source_check`, `fetch_content`, and `get_search_content` stay off every request until `web_enable` or Pi's `tool_search` loads them.\" One nuance: that sentence documents the optional `toolExposure: \"deferred\"` mode — the README states the default is `\"direct\"` with tools available from the first request — so the record's gloss (\"the four tools are the package's enabled web tools\") is broader than the quote's context, though the capability conclusion is independently confirmed by the tool sections themselves."
+    },
+    {
+      "result_id": "V6",
+      "evidence_ids": [
+        "E6"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "The published pi-subagents 0.80.0 package contains both agents/researcher.md and agents/evidence-auditor.md.",
+      "reason": "Fetched https://unpkg.com/pi-subagents@0.80.0/?meta and searched the full 103K-char manifest: it lists \"/agents/researcher.md\" (3092 bytes, text/markdown) and \"/agents/evidence-auditor.md\" (2556 bytes) among exactly 13 /agents/*.md files (claude-code, claude-code-writer, codex-exec, codex-exec-writer, cursor-agent, cursor-agent-writer, delegate, evidence-auditor, oracle, researcher, reviewer, scout, worker — matching the record's description). Beyond the manifest, my direct single-file retries of both URLs succeeded this time (no HTTP 500): each returned full content with frontmatter `name: researcher` and `name: evidence-auditor` respectively, so file existence no longer rests on the manifest alone. Both files also fetch at 0.81.0."
+    },
+    {
+      "result_id": "V7",
+      "evidence_ids": [
+        "E7"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "pi-subagents 0.80.0 documents the researcher and evidence-auditor roles and both foreground and background delegation.",
+      "reason": "Fetched https://unpkg.com/pi-subagents@0.80.0/README.md and read it in full (9,066 bytes): the builtin-agents table contains verbatim \"`researcher` | Web/docs research with sources and a concise research brief.\" and \"`evidence-auditor` | Independently checks whether important research claims are supported by their sources.\" (both with the elided \"Requires pi-web-access in the child\" link, consistent with the record's ellipsis); the delegation sentence appears verbatim: \"Foreground children run as sessions inside the parent Pi process and stream in the conversation. Background children run as sessions inside a detached runner process that keeps working and can be checked later.\"; and \"pi-subagents needs Pi 1.2.0 or newer\" appears verbatim in the Install section."
+    },
+    {
+      "result_id": "V8",
+      "evidence_ids": [
+        "E8"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "@zhushanwen/pi-structured-output 6.2.2 still provides Ajv-backed validation and an authoritative-schema injection workflow mode gated by the PI_WORKFLOW_SCHEMA environment variable.",
+      "reason": "Fetched https://unpkg.com/@zhushanwen/pi-structured-output@6.2.2/README.md and read it in full: the quoted Chinese sentence appears verbatim in the opening paragraph (\"按 `PI_WORKFLOW_SCHEMA` 环境变量装配两种变体——workflow 模式以引擎注入的权威 schema 强制约束产出，日常模式校验模型自报 schema 的数据。\"). The translation is faithful; \"日常模式\" is literally \"daily/everyday mode\" (the README itself later glosses it as \"交互式 pi 注册\", interactive pi registration), and the translation's \"Ajv-validates\" is supplied from the README's own other sections rather than that sentence. Ajv is independently documented in the same README: the mode table says \"Ajv 校验自报 data\", the defense chain names Ajv compilation (strict:false), and the file tree lists \"ajv-validator.ts # Ajv 编译缓存（WeakMap）\" (Ajv compile cache, WeakMap). Workflow mode is documented as: PI_WORKFLOW_SCHEMA injected by the subagent workflow engine, single-parameter tool whose parameters ARE the authoritative schema validated by pi's parameter layer — matching \"authoritative-schema injection usable as a trust boundary\"."
+    },
+    {
+      "result_id": "V9",
+      "evidence_ids": [
+        "E9"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "pi-workflow-engine 1.2.0 provides the workflow tool with bounded execution — concurrency, timeouts, agent counts, and token budgets — and a built-in research workflow that verifies claims.",
+      "reason": "Fetched https://unpkg.com/pi-workflow-engine@1.2.0/README.md and read it in full: it states verbatim \"Requires **pi 1.0.0 or newer**\", \"**Controlled execution.** Concurrency, timeouts, agent counts, and token budgets keep fan-out bounded.\", and the built-in workflows table row \"`research` | Cited external evidence with independent claim verification\". All three quotes in the record match the page."
+    },
+    {
+      "result_id": "V10",
+      "evidence_ids": [
+        "E10"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "pi-workflow-engine 1.2.0 enforces structured-output contracts: schema agents deliver only through a validated final_answer tool, with two repair attempts before failing closed.",
+      "reason": "Fetched https://unpkg.com/pi-workflow-engine@1.2.0/USAGE.md (66,284 chars stored; searched in full): found verbatim \"Schema agents accept structured output only through the validated, terminating `final_answer` tool. If the first response omits it, the engine makes at most **two repair attempts** (three prompt attempts total).\" and \"Clean exhaustion throws `WorkflowStructuredOutputError` with code `WORKFLOW_STRUCTURED_OUTPUT_NONCOMPLIANCE`\"; the flags list documents \"`--budget=50000` # output-token ceiling for subagents\". All quoted material matches the page."
+    },
+    {
+      "result_id": "V11",
+      "evidence_ids": [
+        "E11"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "The pi-web-access repository is active and not archived: last push 2026-10-21, 5 open issues, 1,673 stars.",
+      "reason": "Re-queried https://api.github.com/repos/nicobailon/pi-web-access raw: pushed_at \"2026-10-21T05:33:16Z\", archived false, open_issues_count 5, stargazers_count 1673, default_branch \"main\" — every value identical to the record. No drift since the record's query."
+    },
+    {
+      "result_id": "V12",
+      "evidence_ids": [
+        "E12"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "The pi-subagents repository is active and not archived: last push 2026-10-22, 0 open issues, 3,986 stars.",
+      "reason": "Re-queried https://api.github.com/repos/nicobailon/pi-subagents raw: archived false, open_issues_count 0, default_branch \"main\" — identical to the record. Two live-drift findings, stated plainly: pushed_at has moved from the recorded 2026-10-22T17:02:32Z to 2026-10-22T20:21:47Z (a push ~3h19m after the record's query, timestamp-correlated with the 0.81.0 npm publish at 20:21:26Z), and stargazers_count is now 3988, not 3986. The material maintenance claim (active, pushed same day, not archived, no open issues) holds; the recorded timestamp and star count are superseded by hours of normal activity."
+    },
+    {
+      "result_id": "V13",
+      "evidence_ids": [
+        "E13"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "The pi-workflow-engine repository is active and not archived: last push 2026-10-22, 1 open issue, 12 stars.",
+      "reason": "Re-queried https://api.github.com/repos/timbrinded/pi-workflow-engine raw: pushed_at \"2026-10-22T07:19:30Z\", archived false, open_issues_count 1, stargazers_count 12, default_branch \"master\" — every value identical to the record. Low stars noted by the record itself; activity is the maintenance signal and it is confirmed."
+    },
+    {
+      "result_id": "V14",
+      "evidence_ids": [
+        "E14"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "For @zhushanwen/pi-structured-output, no repository is declared on npm, so repository-level maintenance cannot be assessed; the registry shows active publishing (34 versions, latest published 2026-10-21).",
+      "reason": "My direct packument read (V3) confirms zero \"repository\"/\"homepage\" occurrences in the registry document and time[\"6.2.2\"] = \"2026-10-21T07:06:07.933Z\". Counterevidence hunt: web_search across the package name and author surfaced only the pi.dev registry-mirror pages, the npm maintainer profile (~zhushanwen321), a pkgstats page, and an unrelated structured-output.ts example file inside badlogic/pi-mono — no repository for this package; the 6.2.2 README likewise contains no repository link. A source_check on the no-repository claim returned missing-evidence (no passages either supporting or contradicting), which here means no counterevidence surfaced rather than positive corroboration. Honest limit: \"not declared on npm and not found anywhere searched\" is proven; the nonexistence of any private/unlisted repository cannot be. The \"34 versions\" count was not independently recounted (see unresolved questions)."
+    },
+    {
+      "result_id": "V15",
+      "evidence_ids": [
+        "E15"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "pi-subagents 0.80.0's release notes describe a harness-version requirement change: it moves to Pi 1.2.0, and its README states pi-subagents needs Pi 1.2.0 or newer.",
+      "reason": "Fetched https://github.com/nicobailon/pi-subagents/releases/tag/v0.80.0: the release body opens verbatim \"pi-subagents 0.80.0 moves to Pi 1.2.0 and uses it to make background work quieter. When a subagent finishes while you're idle, its own notice now starts the parent's turn...\", and its \"Need to know\" section states \"pi-subagents now needs **Pi 1.2.0 or newer**\". The README half of the quote was independently confirmed in V7 from the published package. The record's closing note that the installed environment runs pi 1.4.0 is an environment fact I could not check from published sources (see unresolved questions)."
+    },
+    {
+      "result_id": "V16",
+      "evidence_ids": [
+        "E16"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "pi-workflow-engine 1.2.0's release notes describe extension-API changes: built against pi 1.3.0, adopting pi 1.2–1.3 extension APIs, and requiring pi 1.0.0 or newer at load time.",
+      "reason": "Fetched https://github.com/timbrinded/pi-workflow-engine/releases/tag/v1.2.0: verbatim \"Built against pi 1.3.0. This release teaches the host model how to write good workflows, closes the write–iterate–save loop for inline scripts, and adopts pi 1.2–1.3 extension APIs.\" Also fetched the v1.1.0 release page, since the record's second quote comes from it: verbatim \"**Requires pi 1.0.0 or newer**: on older pi the extension stops at load with a message to update pi.\" USAGE.md at 1.2.0 independently states the same load-time requirement. I read both release notes for capability removals: none remove gates, budgets, or structured-output enforcement — v1.2.0 adds budget directives (\"An explicit `budget` can only lower the cap\") and keeps the research workflow with its verification pass."
+    },
+    {
+      "result_id": "V17",
+      "evidence_ids": [
+        "E17"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "Between 0.28.0 and 0.44.0, the pi-web-access changelog contains no Breaking or Removed sections and no entry that removes or renames web_search, fetch_content, source_check, or get_search_content.",
+      "reason": "Fetched https://unpkg.com/pi-web-access@0.44.0/CHANGELOG.md (129,991 chars) and read the entire 0.28.0–0.44.0 range directly (0.44.0→0.25.0 in three passes): version headers run \"[0.44.0] - 2026-10-20\" through \"[0.28.0] - 2026-09-04\" as the record states, and the only section types in range are Highlights/Added/Changed/Fixed. A full-file search found exactly one \"Breaking\" occurrence — the word \"breaking\" inside a 0.30.0-era Fixed bullet (\"Prevent malformed `fetch_content` auth, mode, or proxy parameters from breaking tool-call rendering\"), not a section header — and four \"### Removed\" sections, all in old-version content: the librarian skill removal (issues #136/#23), the deprecated code_search tool removal (#61/#62), the package-lock.json removal adjacent to \"[0.10.7] - 2026-05-02\", and the result-review workflow removal (header unpinned after two bounded attempts; its neighboring entries reference the pi 0.63+ auth migration, consistent with pre-0.17.0 but not pinned). The 0.30.0 sentence the record quotes — \"Removed the unconditional global `fetch` replacement during extension initialization; proxy transport is now installed lazily\" — appears verbatim inside a Fixed section. My scan of the Changed/Fixed sections in range found real behavior changes to the four tools that a header-only scan would fold into the record's own caveat, none of which remove or rename them: 0.30.0 makes source_check stop inferring support/contradiction (retrieved passages require manual semantic review) and defaults fresh installs to the silent `none` workflow; 0.31.0 truncates long web_search output (full results remain via get_search_content); 0.37.0 marks failed tool calls isError:true (explicitly covering web_search and source_check); 0.38.0 shortens the web_search tool description; 0.34.0 changes the toolActivation default; 0.28.0 parallelizes batch searches. All four tools remain registered and documented at 0.44.0 (V5)."
+    },
+    {
+      "result_id": "V18",
+      "evidence_ids": [
+        "E18",
+        "E8",
+        "E3",
+        "E14"
+      ],
+      "status": "verified",
+      "confidence": "high",
+      "claim": "No release notes or changelog exist for the @zhushanwen/pi-structured-output 6.2.1 → 6.2.2 delta: the package publishes no CHANGELOG.md and declares no repository, and the 6.2.2 README still documents the assumed capabilities.",
+      "reason": "My direct fetch of https://unpkg.com/@zhushanwen/pi-structured-output@6.2.2/CHANGELOG.md returned unpkg's \"Not found\" response (404), confirming absence from the published package; the registry declares no repository or homepage (V3/V14), leaving no first-party location for release notes; and the 6.2.2 README fetched in V8 still documents both assumed capabilities. The record's own framing — this establishes the delta is undocumented, not that it is safe — is accurate and worth keeping in the report."
+    }
+  ],
+  "unresolved_questions": [
+    "Exact version of the `result-review` \"### Removed\" changelog section: consistent with E17's \"below 0.17.0\" (neighboring entries reference the pi 0.63+ auth migration and the adjacent hard-cutover entry is [0.10.4] - 2026-03-27), but the header itself was not captured within the audit's bounded attempts. Immaterial to the verified 0.28.0–0.44.0 claim, which was read in full.",
+    "Whether @zhushanwen/pi-structured-output has any private or unlisted repository: only the negative \"not declared on npm, not surfaced in search or source_check\" is provable; repository-level maintenance for this package remains permanently unassessable from public sources (E14's framing is correct).",
+    "Whether the Changed-section behavior changes in the pi-web-access gap (notably 0.30.0's source_check semantic change — it no longer infers support/contradiction and returns unclear/missing-evidence for manual review — and the fresh-install `none` workflow default) affect the pipeline's actual invocation patterns: this was a documentation-level audit; no runtime test was performed. The pipeline's stage-03 contract appears to already assume manual-review semantics, but that correspondence was not tested.",
+    "The researcher's notes (E15/E16) that the installed environment runs pi 1.4.0 — which is what makes the Pi 1.2.0+ requirement a non-break — is a local-environment fact that published sources cannot confirm and this audit did not verify.",
+    "Unverified in bounded audit: E2's \"150 versions listed\" and E3/E14's \"34 versions listed\" counts were not independently recounted (registry _rev counters are consistent with both; immaterial to any conclusion).",
+    "Unverified in bounded audit: E5's full 134,723-char 0.44.0 README was not read line-by-line; the four tool sections, the MCP listing, and the quoted toolExposure sentence were verified directly via full-file search and targeted reading, and the remainder (provider configuration detail) is not material to the claim.",
+    "Unverified in bounded audit: the 0.81.0 release notes were read by the auditor as counterevidence on E2/E6/E7 but are not an evidence record; the 0.80.0→0.81.0 delta is documented in V2 and is now part of the installed-to-current gap for pi-subagents.",
+    "Unverified in bounded audit: E18's \"no release notes exist\" is proven only for the published package (unpkg 404) plus npm metadata (no repository); a changelog hosted at a third-party location cannot be excluded — the record itself already frames the finding this way."
+  ],
+  "gate": {
+    "approved": false
+  }
+}
