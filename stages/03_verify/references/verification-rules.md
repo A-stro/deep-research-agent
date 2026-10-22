@@ -15,7 +15,7 @@ The auditor's value is independence. If the audit inherits the researcher's conc
 
 ## How to audit
 
-- `source_check` for disputed, surprising, or decision-critical claims — it returns `supported / contradicted / unclear / missing-evidence` with passage citations. Its result is validation evidence, not a reason to skip opening the source.
+- `source_check` for disputed, surprising, or decision-critical claims — it returns `supported / contradicted / unclear / missing-evidence` with passage citations. Its result is validation evidence, not a reason to skip opening the source. On pi-web-access ≥0.30.0 it no longer *infers* support/contradiction — it surfaces retrieved passages and you adjudicate them (verified by run 2026-10-22-stack-dep-health); either way, the verdict in your result is yours, not the tool's.
 - `fetch_content` the cited page; `web_search` targeted follow-ups to hunt counterevidence — the auditor who only rereads the researcher's sources is doing half the job.
 - Statuses are closed: `verified` (direct pages substantiate it), `partially_supported` (parts hold, parts do not), `contradicted` (credible sources disagree — name both), `unresolved` (evidence insufficient — this is an honest, complete outcome, not a failure to hide).
 - The `reason` states what the independent check found: which page, what it actually says, staleness, weakness. A reason that restates the status ("it is verified because it is verified") fails the human gate.
