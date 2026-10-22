@@ -14,5 +14,5 @@ Decomposition quality decides the run. A plan is bad when answering every listed
 ## Anti-patterns
 
 - Questions that presuppose the answer ("Why is X faster than Y?" — if X isn't faster, the run must be able to say so).
-- A strategy block whose queries could not return the required evidence.
+- **A strategy block whose queries could not return the required evidence.** One query per named target when a question spans several (four packages → four registry lookups); for chain questions, name the pages earlier questions already surfaced instead of re-searching them.
 - Success criteria that name a document instead of a fact ("find the datasheet" vs "rated throughput under load").

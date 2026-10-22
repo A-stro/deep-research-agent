@@ -1,0 +1,96 @@
+{
+  "artifact": "ResearchPlan",
+  "run_id": "2026-10-22-stack-dep-health",
+  "query": "Are the four packages the deep-research-agent pipeline depends on — pi-web-access, pi-subagents, @zhushanwen/pi-structured-output, pi-workflow-engine — actively maintained, and do their current published versions still provide the capabilities the pipeline's stage contracts assume?",
+  "scope_constraints": [
+    "Current published state as of the run date; installed local copies (pi-web-access 0.27.0, pi-subagents 0.79.1, pi-workflow-engine 1.1.0, @zhushanwen/pi-structured-output 6.2.1) are the baseline for comparison, not the evidence",
+    "Primary sources only: official package registry pages, package repositories (github.com/nicobailon/pi-web-access, github.com/nicobailon/pi-subagents, github.com/timbrinded/pi-workflow-engine), and package docs; a repository URL for @zhushanwen/pi-structured-output must be found, not assumed",
+    "The capability baseline being checked is what stages/01_plan–04_report and _shared/infrastructure.md assume"
+  ],
+  "research_questions": [
+    {
+      "id": "RQ1",
+      "question": "What is the current published version of each of the four packages, and when was it published?",
+      "priority": "high",
+      "success_criteria": [
+        "Current version number and publish date per package, from the official registry page for each of the four packages",
+        "Installed-vs-current version delta recorded per package"
+      ]
+    },
+    {
+      "id": "RQ2",
+      "question": "Does the current published version of each package still expose the specific capabilities the stage contracts assume?",
+      "priority": "high",
+      "success_criteria": [
+        "pi-web-access: current docs/source confirm web_search, fetch_content, source_check, get_search_content are registered tools",
+        "pi-subagents: current docs/source confirm the researcher and evidence-auditor agent definitions ship, with foreground/background delegation",
+        "@zhushanwen/pi-structured-output: current docs/source confirm Ajv-backed validation and an authoritative-schema injection mode usable as a trust boundary",
+        "pi-workflow-engine: current docs/source confirm the workflow tool with gates, budgets, and structured-output contracts",
+        "Each capability finding names the page or file that establishes it"
+      ]
+    },
+    {
+      "id": "RQ3",
+      "question": "Is each package actively maintained — recent release or commit activity, and no deprecation or archival notices?",
+      "priority": "medium",
+      "success_criteria": [
+        "Last release or commit date per package, from its repository or registry page",
+        "Deprecation, archival, or unmaintained flags explicitly checked and their absence or presence recorded per package"
+      ]
+    },
+    {
+      "id": "RQ4",
+      "question": "Where the current published version differs from the installed one, do the release notes describe changes that would break the pipeline's assumptions?",
+      "priority": "low",
+      "success_criteria": [
+        "Release notes or changelog read for every package whose current version differs from the installed baseline",
+        "Any breaking change that affects an assumed capability is named with its version and the capability it touches"
+      ]
+    }
+  ],
+  "search_strategy": [
+    {
+      "question_id": "RQ1",
+      "queries": [
+        "npm registry page: pi-web-access",
+        "npm registry page: pi-subagents",
+        "npm registry page: @zhushanwen/pi-structured-output",
+        "npm registry page: pi-workflow-engine"
+      ],
+      "source_types": ["official"]
+    },
+    {
+      "question_id": "RQ2",
+      "queries": [
+        "pi-web-access current documentation: registered tools web_search fetch_content source_check get_search_content",
+        "pi-subagents current documentation: researcher and evidence-auditor agent definitions, delegation modes",
+        "@zhushanwen/pi-structured-output current documentation: Ajv validation, authoritative schema injection",
+        "pi-workflow-engine current documentation: workflow tool gates budgets structured-output contracts"
+      ],
+      "source_types": ["official", "primary"]
+    },
+    {
+      "question_id": "RQ3",
+      "queries": [
+        "Commit and release activity per package repository — via the repository links surfaced by RQ1's registry pages and RQ2's documentation; check deprecation notices on those same pages"
+      ],
+      "source_types": ["official", "primary"]
+    },
+    {
+      "question_id": "RQ4",
+      "queries": [
+        "Release notes / changelogs between the installed baseline versions and the current published versions — via the repository changelogs surfaced by RQ1–RQ3, read only for the packages where a version gap exists"
+      ],
+      "source_types": ["primary"]
+    }
+  ],
+  "required_evidence": [
+    "Official registry page per package showing current version and publish date",
+    "Package documentation or source establishing each capability named in the stage contracts and _shared/infrastructure.md",
+    "Repository activity evidence (last release or commit) per package",
+    "Release notes or changelog entries for every installed-to-current version gap"
+  ],
+  "gate": {
+    "approved": false
+  }
+}

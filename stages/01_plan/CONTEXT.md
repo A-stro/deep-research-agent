@@ -12,7 +12,7 @@ Do NOT load: other stages' references, the roadmap, any prior run, the whole `_s
 ## Process
 1. Read the query. Extract explicit scope constraints; infer none beyond what is stated.
 2. Decompose into 1–7 research questions (`RQ1`, `RQ2`, …) that **build on each other**, each with at least one measurable success criterion. Follow `references/question-decomposition.md`.
-3. Write a search strategy per question: 1–2 concrete queries, source types where it matters.
+3. Write a search strategy per question: 1–2 concrete queries — one per named target when a question spans several (per-package lookups are not query spam). Later questions may reuse pages already surfaced by earlier questions; say so in the query. Source types where it matters.
 4. List `required_evidence` — what must exist for the run to answer the query.
 5. Choose a `run_id` (`YYYY-MM-DD-<short-slug>`) and write `plan.json` to `output/` with `gate.approved: false`.
 6. Validate: `node tools/validate.mjs plan`.
