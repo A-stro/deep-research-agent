@@ -157,15 +157,19 @@ function checkReportCross(plan, ev, ver, rep) {
 }
 function checkGatesInOrder(needed) {
   const gates = { plan: planOf()?.gate, evidence: evidenceOf()?.gate, verification: loadJson(OUT.verification, "verification")?.gate, report: loadJson(OUT.report, "report")?.gate };
+  const pending = [];
   let prevApproved = true;
   for (const stage of needed) {
     const g = gates[stage];
     if (!g) { fail(`${stage}: artifact missing, chain broken`); break; }
-    if (!prevApproved) fail(`${stage}: previous stage's gate was never approved — this stage may not start`);
+    if (!prevApproved) { fail(`${stage}: previous stage's gate was never approved — this stage may not start`); break; }
     prevApproved = !!g.approved;
+    if (!g.approved) pending.push(stage);
   }
-  const last = needed[needed.length - 1];
-  if (errors.length === 0) ok(`gate chain: ${needed.join(" → ")} approved in order`);
+  if (errors.length === 0) {
+    if (pending.length === 0) ok(`gate chain: ${needed.join(" → ")} approved in order`);
+    else ok(`gate chain: valid through ${needed.join(" → ")}; awaiting human gate approval on: ${pending.join(", ")}`);
+  }
 }
 
 // ---------- stage validators ----------
@@ -219,13 +223,17 @@ if (cmd === "file") {
     ["03 verification", OUT.verification], ["04 report", OUT.report],
   ];
   let produced = 0;
+  let pendingGates = [];
   for (const [label, path] of table) {
     const doc = loadJson(path, label);
     const state = !doc ? "—" : doc.gate?.approved ? "COMPLETE (gate approved)" : "PRODUCED (gate pending)";
     if (doc) produced++;
+    if (doc && !doc.gate?.approved) pendingGates.push(label);
     console.log(`${label}: ${state}`);
   }
-  console.log(produced === 4 ? "Run state: chain complete — archive via _templates/run → runs/" : `Run state: in progress (${produced}/4 artifacts)`);
+  if (produced === 4 && pendingGates.length === 0) console.log("Run state: chain complete — archive via _templates/run → runs/");
+  else if (produced === 4) console.log(`Run state: all artifacts produced; gate pending on ${pendingGates.join(", ")} — approve before archiving.`);
+  else console.log(`Run state: in progress (${produced}/4 artifacts)`);
   process.exit(0);
 } else if (cmd === "plan") stagePlan();
 else if (cmd === "evidence") { checkGatesInOrder(["plan"]); stageEvidence(); }
@@ -235,7 +243,12 @@ else if (cmd === "run") {
   const plan = stagePlan(); const ev = stageEvidence(); const ver = stageVerification(); const rep = stageReport();
   checkGatesInOrder(["plan", "evidence", "verification", "report"]);
   if (errors.length === 0 && plan && ev && ver && rep) {
-    console.log("RUN COMPLETE — all artifacts validate, all gates approved in order.");
+    const allApproved = [plan, ev, ver, rep].every((x) => x.gate?.approved);
+    if (allApproved) {
+      console.log("RUN COMPLETE — all artifacts validate, all gates approved in order.");
+    } else {
+      console.log("Chain valid — all artifacts validate; a human gate is still pending. The run is not complete until the last gate is approved.");
+    }
   }
 } else {
   console.error(`unknown command: ${cmd}`);

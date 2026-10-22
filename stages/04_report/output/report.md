@@ -1,0 +1,81 @@
+# 2026-10-22-stack-dep-health — Deep Research Agent stack dependency health
+
+**Query:** Are the four packages the deep-research-agent pipeline depends on — pi-web-access, pi-subagents, @zhushanwen/pi-structured-output, pi-workflow-engine — actively maintained, and do their current published versions still provide the capabilities the pipeline's stage contracts assume?
+
+## Executive summary
+
+Yes, on both counts. All four packages are under active maintenance — none carries a deprecation notice, all four published within the 48 hours before this run, and the three that declare repositories were pushed to within the last two days. Every capability the pipeline's stage contracts assume is still present in the current published versions, confirmed independently against version-anchored package files rather than marketing pages. Version gaps existed between the installed stack and current published versions (pi-web-access 17 versions behind; the others one to two behind), and the changelogs and release notes across every gap show no break to the assumed capabilities — the only constraints are harness-version requirements (Pi 1.2.0+, pi 1.3.0 APIs) that the environment's pi 1.4.0 satisfies. The independent audit corrected one stale fact mid-run (pi-subagents published 0.81.0 during the audit) and surfaced behavior notes worth knowing but no breaks. The owner applied an update during the run's final gates; pi-web-access — the largest gap — remains at the pre-update version and is the one remaining delta.
+
+## Key findings
+
+1. All four packages are actively maintained and none is deprecated: registry entries carry no deprecation flags, all four published within 48 hours of this run (2026-10-20 to 2026-10-21, with pi-subagents 0.81.0 following on 2026-10-22), and the three declared repositories were pushed within the last two days. — evidence: E1, E2, E3, E4, E11, E12, E13, E14
+2. Every capability the stage contracts assume is present in the current published versions: the four web tools (E5), the researcher and evidence-auditor roles plus foreground/background delegation (E6, E7), Ajv validation and the PI_WORKFLOW_SCHEMA authoritative-schema workflow mode (E8), and bounded workflow execution with fail-closed structured-output enforcement (E9, E10). All confirmed from the exact published package versions via unpkg. — evidence: E5, E6, E7, E8, E9, E10
+3. No breaking change crosses any installed-to-current version gap for pi-web-access, pi-subagents, or pi-workflow-engine: the pi-web-access 0.28.0-0.44.0 range has no Breaking or Removed sections and no removals or renames of the four tools (audited in full, including Changed-section behavior changes); the pi-subagents releases contain only fixes and additions; pi-workflow-engine 1.2.0 keeps gates, budgets, and structured-output enforcement while adding budget directives. — evidence: E15, E16, E17
+4. The upgrade constraints are harness-version requirements, not capability breaks: pi-subagents 0.80.0+ requires Pi 1.2.0 or newer and pi-workflow-engine is built against pi 1.3.0 APIs — both satisfied by the environment's pi 1.4.0. — evidence: E15, E16
+5. @zhushanwen/pi-structured-output is the stack's provenance blind spot: it declares no repository and publishes no changelog, so its 6.2.1 to 6.2.2 delta is undocumented and its repository-level maintenance is unassessable from public sources; only its registry publish cadence (34 versions, latest 2026-10-21) and its version-anchored README speak for it. — evidence: E3, E14, E18
+
+## Detailed analysis
+
+### RQ1
+
+The official registry gives current versions of pi-web-access 0.44.0 (2026-10-21), @zhushanwen/pi-structured-output 6.2.2 (2026-10-21), and pi-workflow-engine 1.2.0 (2026-10-20); pi-subagents was 0.80.0 (2026-10-21) at evidence time, corrected to 0.81.0 (2026-10-22) by the audit — see Conflicts. Against the installed baseline recorded at planning (0.27.0 / 0.79.1 / 6.2.1 / 1.1.0), the deltas were: pi-web-access 17 versions, pi-subagents one version (two after the audit's correction), structured-output one patch, workflow-engine one minor. As established under RQ3, the registry activity itself is the maintenance signal; the version numbers here set up the gap analysis under RQ4. At the run's close the owner updated the installed extensions: three of the four now match current published versions, while pi-web-access remains at 0.27.0 — the one delta that still matters operationally.
+
+### RQ2
+
+Each capability named in the stage contracts was confirmed from the current published packages themselves, not from the installed copies: the pi-web-access 0.44.0 README documents web_search, fetch_content, source_check, and get_search_content with dedicated sections; the pi-subagents 0.80.0 (and 0.81.0) packages ship agents/researcher.md and agents/evidence-auditor.md, with the README documenting both roles and both delegation modes; the structured-output 6.2.2 README documents Ajv-backed validation and the PI_WORKFLOW_SCHEMA workflow mode in which the workflow engine injects the authoritative schema; pi-workflow-engine 1.2.0 documents bounded execution and enforces structured output through a validated final_answer tool with two repair attempts before failing closed. Two nuances surfaced: the toolExposure quote in E5 describes an optional deferred mode (the default is direct — the capability stands via the tool sections themselves), and, as established under RQ4, the changelog span contains behavior changes within the four tools (source_check manual-review semantics, web_search output truncation) that the stage contracts already accommodate.
+
+### RQ3
+
+Maintenance is healthy across the board. The three declared repositories (nicobailon/pi-web-access, nicobailon/pi-subagents, timbrinded/pi-workflow-engine) are unarchived, show same-day or last-day pushes, and carry few open issues (5, 0, 1). The audit re-queried each: two matched exactly, and pi-subagents showed live drift (a push at 20:21 on 2026-10-22, timestamp-correlated with the 0.81.0 publish, plus two new stars) — hours-scale drift on an actively-developed package, superseding the recorded figures without affecting the conclusion. For @zhushanwen/pi-structured-output, no repository is declared and none surfaced in the audit's search or source_check (missing-evidence, meaning no counterevidence either), so publish cadence is its only maintenance signal — and that signal is strong (published 2026-10-21). No package carries a deprecation notice anywhere in its registry entry.
+
+### RQ4
+
+Reading the release notes for every version gap: pi-web-access's 0.28.0-0.44.0 range contains no Breaking or Removed sections and no removals or renames of the four tools; the audit's deeper read of the Changed sections found behavior changes worth knowing (0.30.0 makes source_check stop inferring support/contradiction — returning passages for manual review, which is exactly what the stage-03 contract assumes; 0.31.0 truncates long web_search output with full results available via get_search_content; 0.28.0 parallelizes batch searches) but no breaks. pi-subagents 0.80.0 and 0.81.0 releases contain only fixes and additions; its one requirement change — Pi 1.2.0 or newer — is satisfied by the environment's pi 1.4.0, an environment fact outside published-source scope (see Uncertainties). pi-workflow-engine 1.2.0 adopts pi 1.2-1.3 extension APIs, requires pi 1.0.0 or newer at load, and keeps the gates, budgets, and structured-output enforcement the infrastructure notes rely on. The structured-output 6.2.2 delta is the one gap that cannot be read at all — no changelog and no repository exist for it (see finding five).
+
+## Conflicts
+
+- The evidence bundle recorded pi-subagents's latest published version as 0.80.0 (queried 2026-10-22 ~14:49); the independent audit found dist-tags.latest = 0.81.0, published 2026-10-22T20:21:26Z — after the bundle's query. This report states 0.81.0 as current (installed delta 0.79.1 to 0.81.0, two versions). The record was accurate at its capture time; the package moved during the run. The auditor fetched the 0.81.0 release notes and both agent files as counterevidence: no capability breaks — fixes and additions only. (evidence: E2)
+
+## Uncertainties and gaps
+
+- Whether the behavior changes inside the pi-web-access gap (source_check manual-review semantics from 0.30.0, web_search output truncation from 0.31.0, toolActivation default change from 0.34.0) affect the pipeline's actual invocation patterns was not runtime-tested — this was a documentation-level audit; the stage-03 contract already assumes manual-review semantics.
+- The @zhushanwen/pi-structured-output 6.2.1 to 6.2.2 delta is undocumented: with no changelog and no repository, its content is unknowable from public sources.
+- Whether a private or unlisted repository exists behind @zhushanwen/pi-structured-output cannot be proven — only that none is declared on npm and none surfaced in search or source_check.
+- The installed pi version (reported as 1.4.0 at planning) is a local-environment fact that published sources cannot confirm and the audit did not verify; it is the fact that makes the Pi 1.2.0+ requirements a non-break.
+- Live-source drift: pi-subagents published 0.81.0 and its repository pushed again during the run itself; registry and repository figures record state at query time, not at publication.
+
+## Actionable insights
+
+- The applied update is supported by this run's evidence: three of the four packages now match current published versions with no capability breaks verified across their gaps. Complete the set: pi-web-access remains at 0.27.0 — update it; the full 0.28.0-0.44.0 range was read and breaks nothing the pipeline assumes, and pi 1.4.0 satisfies every stated requirement.
+- Refresh _shared/infrastructure.md at run close: its installed-version column (pi-web-access@0.27.0, pi-subagents 0.79.1, pi-workflow-engine 1.1.0, pi-structured-output 6.2.1) now describes the pre-update state.
+- Operate source_check with manual adjudication on pi-web-access >= 0.30.0 (it returns passages, not inferred verdicts — the stage-03 contract already assumes this), and use get_search_content for full results when long web_search output truncates.
+- Treat @zhushanwen/pi-structured-output as unauditable on version bumps: with no repository or changelog, pin the version and smoke-test the workflow mode on any bump rather than looking for release notes that cannot exist.
+
+## Sources
+
+| Source | URL | Evidence |
+|---|---|---|
+| npm registry — pi-web-access | https://registry.npmjs.org/pi-web-access | E1 |
+| npm registry — pi-subagents | https://registry.npmjs.org/pi-subagents | E2 |
+| npm registry — @zhushanwen/pi-structured-output | https://registry.npmjs.org/@zhushanwen%2fpi-structured-output | E3, E14 |
+| npm registry — pi-workflow-engine | https://registry.npmjs.org/pi-workflow-engine | E4 |
+| pi-web-access README (0.44.0, via unpkg) | https://unpkg.com/pi-web-access@0.44.0/README.md | E5 |
+| pi-web-access CHANGELOG (0.44.0, via unpkg) | https://unpkg.com/pi-web-access@0.44.0/CHANGELOG.md | E17 |
+| pi-subagents package manifest (0.80.0, via unpkg) | https://unpkg.com/pi-subagents@0.80.0/?meta | E6 |
+| pi-subagents README (0.80.0, via unpkg) | https://unpkg.com/pi-subagents@0.80.0/README.md | E7 |
+| pi-subagents release v0.80.0 | https://github.com/nicobailon/pi-subagents/releases/tag/v0.80.0 | E15 |
+| GitHub API — nicobailon/pi-web-access repository | https://api.github.com/repos/nicobailon/pi-web-access | E11 |
+| GitHub API — nicobailon/pi-subagents repository | https://api.github.com/repos/nicobailon/pi-subagents | E12 |
+| @zhushanwen/pi-structured-output README (6.2.2, via unpkg) | https://unpkg.com/@zhushanwen/pi-structured-output@6.2.2/README.md | E8 |
+| @zhushanwen/pi-structured-output CHANGELOG at 6.2.2 (absent — HTTP 404) | https://unpkg.com/@zhushanwen/pi-structured-output@6.2.2/CHANGELOG.md | E18 |
+| pi-workflow-engine README (1.2.0, via unpkg) | https://unpkg.com/pi-workflow-engine@1.2.0/README.md | E9 |
+| pi-workflow-engine USAGE.md (1.2.0, via unpkg) | https://unpkg.com/pi-workflow-engine@1.2.0/USAGE.md | E10 |
+| pi-workflow-engine release v1.2.0 | https://github.com/timbrinded/pi-workflow-engine/releases/tag/v1.2.0 | E16 |
+| GitHub API — timbrinded/pi-workflow-engine repository | https://api.github.com/repos/timbrinded/pi-workflow-engine | E13 |
+
+## Limitations
+
+- Documentation-level audit: the auditor read published pages, registries, and changelogs; no runtime tests of tool behavior were performed.
+- The installed-version baselines in this report describe the pre-update environment (0.27.0 / 0.79.1 / 6.2.1 / 1.1.0). At the stage-03 gate the owner updated the extensions: pi-subagents 0.81.0, pi-workflow-engine 1.2.0, and @zhushanwen/pi-structured-output 6.2.2 are now installed; pi-web-access remains at 0.27.0 in the observed environment at report time. The new installed state was observed locally, not audited as a research claim.
+- Registry and repository figures are as-of timestamps captured 2026-10-22; packages this active drift within hours (the run itself observed pi-subagents 0.81.0 publishing mid-audit).
+- One changelog sub-detail — the version header of the pre-0.17.0 'result-review' Removed section — was not pinned within the audit's bounded attempts; immaterial to the verified 0.28.0-0.44.0 claim.
