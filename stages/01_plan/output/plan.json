@@ -1,11 +1,11 @@
 {
   "artifact": "ResearchPlan",
   "run_id": "2026-10-22-stack-dep-health",
-  "query": "Are the four packages the deep-research-agent pipeline depends on — pi-web-access, pi-subagents, @zhushanwen/pi-structured-output, pi-workflow-engine — actively maintained, and do their current published versions still provide the capabilities the pipeline's stage contracts assume?",
+  "query": "Are the four packages the deep-research-agent pipeline depends on \u2014 pi-web-access, pi-subagents, @zhushanwen/pi-structured-output, pi-workflow-engine \u2014 actively maintained, and do their current published versions still provide the capabilities the pipeline's stage contracts assume?",
   "scope_constraints": [
     "Current published state as of the run date; installed local copies (pi-web-access 0.27.0, pi-subagents 0.79.1, pi-workflow-engine 1.1.0, @zhushanwen/pi-structured-output 6.2.1) are the baseline for comparison, not the evidence",
     "Primary sources only: official package registry pages, package repositories (github.com/nicobailon/pi-web-access, github.com/nicobailon/pi-subagents, github.com/timbrinded/pi-workflow-engine), and package docs; a repository URL for @zhushanwen/pi-structured-output must be found, not assumed",
-    "The capability baseline being checked is what stages/01_plan–04_report and _shared/infrastructure.md assume"
+    "The capability baseline being checked is what stages/01_plan\u201304_report and _shared/infrastructure.md assume"
   ],
   "research_questions": [
     {
@@ -31,7 +31,7 @@
     },
     {
       "id": "RQ3",
-      "question": "Is each package actively maintained — recent release or commit activity, and no deprecation or archival notices?",
+      "question": "Is each package actively maintained \u2014 recent release or commit activity, and no deprecation or archival notices?",
       "priority": "medium",
       "success_criteria": [
         "Last release or commit date per package, from its repository or registry page",
@@ -57,7 +57,9 @@
         "npm registry page: @zhushanwen/pi-structured-output",
         "npm registry page: pi-workflow-engine"
       ],
-      "source_types": ["official"]
+      "source_types": [
+        "official"
+      ]
     },
     {
       "question_id": "RQ2",
@@ -67,21 +69,29 @@
         "@zhushanwen/pi-structured-output current documentation: Ajv validation, authoritative schema injection",
         "pi-workflow-engine current documentation: workflow tool gates budgets structured-output contracts"
       ],
-      "source_types": ["official", "primary"]
+      "source_types": [
+        "official",
+        "primary"
+      ]
     },
     {
       "question_id": "RQ3",
       "queries": [
-        "Commit and release activity per package repository — via the repository links surfaced by RQ1's registry pages and RQ2's documentation; check deprecation notices on those same pages"
+        "Commit and release activity per package repository \u2014 via the repository links surfaced by RQ1's registry pages and RQ2's documentation; check deprecation notices on those same pages"
       ],
-      "source_types": ["official", "primary"]
+      "source_types": [
+        "official",
+        "primary"
+      ]
     },
     {
       "question_id": "RQ4",
       "queries": [
-        "Release notes / changelogs between the installed baseline versions and the current published versions — via the repository changelogs surfaced by RQ1–RQ3, read only for the packages where a version gap exists"
+        "Release notes / changelogs between the installed baseline versions and the current published versions \u2014 via the repository changelogs surfaced by RQ1\u2013RQ3, read only for the packages where a version gap exists"
       ],
-      "source_types": ["primary"]
+      "source_types": [
+        "primary"
+      ]
     }
   ],
   "required_evidence": [
@@ -91,6 +101,8 @@
     "Release notes or changelog entries for every installed-to-current version gap"
   ],
   "gate": {
-    "approved": false
+    "approved": true,
+    "approved_by": "Aaron",
+    "date": "2026-10-22"
   }
 }
