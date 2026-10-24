@@ -1,0 +1,103 @@
+# Which open-source agent frameworks gained the most production adoption this year, and what do independent (non-vendor) sources say about where each breaks down at scale?
+
+**Run:** `2026-10-23-agent-framework-adoption` · Evidence-gated research pipeline (plan → evidence → independent audit → report; all gates human-approved)
+
+## Executive summary
+
+Through October 2026, production adoption of open-source agent frameworks has concentrated in a short head. LangChain and its runtime LangGraph dominate measured usage — 170.5M and 44.8M monthly PyPI downloads respectively, with the only widely echoed named enterprise deployment at scale (Klarna's assistant, vendor-asserted). The steepest 2025-26 gains came from a zero base: OpenAI Agents SDK (12.4M downloads/month, 30.2K stars in ~19 months) and Google ADK (10.1M/month, 22.0K stars in ~19 months). GitHub stars tell a different story — AutoGen (61.5K) and CrewAI (60.0K) lead while sitting at 0.8M and 2.4M monthly downloads — so 'most adopted' depends on whether usage or mindshare is meant. On where frameworks break down at scale, the independent accounts converge on durability: every top-5 framework saves state but leaves failure detection, automatic recovery, and duplicate prevention to the operator, with framework-specific failure patterns recorded for LangGraph, CrewAI, Microsoft Agent Framework, and the OpenAI SDK.
+
+## Key findings
+
+1. LangChain and LangGraph lead measured usage by an order of magnitude: 170.5M and 44.8M monthly PyPI downloads (re-verified against the registry API). ([E7], [E8])
+2. GitHub stars rank the field differently: AutoGen (61.5K) and CrewAI (60.0K) lead, while LangGraph (43.8K) — with ~18× CrewAI's monthly downloads — sits below both. ([E2], [E8], [E9], [E10])
+3. OpenAI Agents SDK shows the fastest raw growth in the candidate set: 30.2K stars and 12.4M monthly downloads within ~19 months of creation (2025-03-11). ([E11], [E3])
+4. Google ADK shows a near-identical trajectory: 22.0K stars and 10.1M monthly downloads within ~19 months (2025-04-01). ([E12])
+5. Microsoft retired AutoGen into maintenance mode; Agent Framework is now its sole agent framework. ([E6], [E10])
+6. The common independent critique at scale is durability: LangGraph, CrewAI, and Google ADK checkpoint state but leave failure detection, automatic recovery, and duplicate prevention to the operator; Microsoft Agent Framework's resume is entirely manual with no watchdog. ([E22], [E23])
+7. LangGraph's documented production failure patterns include unbounded checkpoint state, recursion-limit terminations, silent last-write-wins state loss, checkpointer connection exhaustion, and unresumable interrupt state after restart. ([E18])
+8. CrewAI's documented production failure modes include silent context truncation in handoffs, hierarchical stalls, unbroken tool loops, and cost multiplication; a practitioner account adds opaque hierarchical routing, and the vendor itself calls trust the top barrier to production. ([E19], [E20], [E21], [E16])
+9. The OpenAI Agents SDK in production requires an external runtime for durable execution and carries a model lock-in surface around the OpenAI APIs. ([E24], [E25])
+10. Google ADK's 1.0 release shipped breaking changes while presented as production-ready — confirmed by the official release notes' '⚠ BREAKING CHANGES' and upgrade-failure issues #808/#970/#978 — and Google's own docs record ~4.7s cold-start latency at min_instances=1. ([E26], [E27])
+11. Named production use is strongest for LangGraph (Klarna at 85M users; LinkedIn, Uber) but rests on vendor-asserted claims; third-party echoes trace to the same vendor-origin story. ([E15])
+
+## Detailed analysis
+
+### RQ1 — Which open-source agent frameworks form the current (2026) candidate set from which 'most production adoption' can be measured?
+
+The candidate set is not contested: four independent sources (a tracker maintaining its own dataset, a practitioner comparison with growth data, a survey-citing vendor-neutral comparison, and tech press) cross-name the same short head — LangChain/LangGraph, CrewAI, AutoGen (now Microsoft Agent Framework), OpenAI Agents SDK, Google ADK, Pydantic AI, LlamaIndex, Smolagents, Mastra. As established under V6, AutoGen is a special case: it remains the stars leader (61.5K) but is officially in maintenance mode, so its momentum belongs to Microsoft Agent Framework going forward. Two boundaries were enforced rather than assumed: Mastra was excluded because its hybrid LICENSE.md (with restricted ee/ portions) does not map to a recognized single OSS license (V17), and visual builders (Dify, n8n) plus the unclassifiable OpenClaw were kept outside the code-framework ranking. The result is a defensible candidate set of seven code frameworks, of which five carry enough signal mass for ranking.
+
+### RQ2 — For each shortlisted framework, what do public adoption signals show over the trailing 12 months — downloads, contributors, star growth, and named production use?
+
+Primary signals — re-verified by direct API re-runs (V1) — split into two families that must not be conflated (as the tracker itself warns, E17/V18). Usage signals: LangChain 170.5M and LangGraph 44.8M monthly downloads dwarf everything else; the two youngest frameworks, OpenAI Agents SDK (12.4M) and Google ADK (10.1M), already outrank every incumbent except the LangChain stack. Mindshare signals: AutoGen and CrewAI lead stars at ~60-61K, with CrewAI showing the largest 6-month gain among incumbents (+2,540, E3). Contributor counts cluster tightly (285-475), meaning no framework has a moat of unique maintainers. Named production use is the weakest signal family: Klarna/LinkedIn/Uber for LangGraph are vendor-asserted (V8 — third-party echoes trace to the vendor's own story), HatchWorks names live ADK client work (E28), deepsense.ai names enterprise early-access testing of the Agents API (E29), and CrewAI's '2 billion workflows' is an unaudited vendor metric (V15). Coverage of the plan's success criteria is complete for all five shortlisted frameworks except that CrewAI's strongest production evidence is the vendor's own.
+
+### RQ3 — Which frameworks rank as having gained the most production adoption this year, and where do the adoption signals disagree with each other?
+
+Ranking by 'gained the most production adoption this year' produces two defensible answers, and the disagreement between them is itself a finding (V18). On measured usage gains, OpenAI Agents SDK and Google ADK gained the most — both went from nonexistent to top-4 monthly downloads in ~19 months (E11, E12), trajectories corroborated by independent 6-month star deltas (E3). On absolute installed base, LangChain/LangGraph lead and LangGraph is the only framework with a named at-scale enterprise deployment echoed by third parties (E15, with the vendor-origin caveat). The stars ranking — AutoGen and CrewAI on top — measures community attention, not deployment, and inverts the usage order precisely for the frameworks with the weakest download numbers (AutoGen 0.79M/month while in maintenance). No independent source publishes a combined trailing-12-months growth ranking (bundle gap), so the composite ranking in this report is constructed from primary signals; the construction rule, not any single number, is what a reader should audit.
+
+### RQ4 — What do independent (non-vendor) sources say about where each top-ranked framework breaks down at scale in production?
+
+Independent accounts of where each top-5 framework breaks down at scale converge on one structural point before any framework-specific one: checkpointing is not durable execution. Diagrid's source-inspected analysis (V11) finds that LangGraph, CrewAI, and Google ADK save state but leave failure detection, automatic recovery, and duplicate prevention to the operator, and that Microsoft Agent Framework's resume is entirely manual — no supervisor, scheduler, heartbeat, lease, or watchdog. Framework-specific patterns then diverge. LangGraph's failures are state-centric: unbounded checkpoints exhausting memory, recursion limits terminating mid-task, last-write-wins losses on concurrent branches, and interrupt state that cannot resume after a deploy restart (E18, corroborated by a 50-agent rollout describing ops pain rather than graph-logic pain, E30/V16). CrewAI's failures are composition-centric: silent context truncation between agents, hierarchical routing that cannot be unit-tested, unbroken tool loops, and cost multiplication as crews grow (E19, E20, E21) — with the vendor itself conceding trust is the top production barrier (E16). The OpenAI SDK's gap is runtime-shaped: teams wrap it in FastAPI/Kubernetes and still lack durable execution (E24), plus a model lock-in surface (E25). Google ADK's documented problems are release-hygiene and platform-shaped: 1.0 shipped breaking changes under a production-ready banner — confirmed by the official release notes and upgrade-failure issues (V13) — and its managed runtime adds ~4.7s cold starts at low min_instances (E27, official, contextual). Notably, every one of these accounts comes from parties without a stake in the framework being critiqued; where the critic has commercial interest (Diagrid, ZenML), it is disclosed on the record and the direction is corroborated by a second source.
+
+### RQ5 — What caveats bound the conclusion — where is independent evidence missing or thin, and what would change the ranking?
+
+The caveats that bound every conclusion above are structural, not incidental. First, public signals are the only signals: download counts are CI/dependency-inflated (E17), stars are mindshare, and no private deployment data exists — so 'adoption' here means measured public activity, not verified production instances. Second, the production-use story is vendor-shaped: the strongest case (Klarna) is vendor-asserted with an echo chain, and CrewAI's volume claim is the vendor's own (V8, V15). Third, the ranking's boundary decisions change its edges: Pydantic AI (5.4M downloads/month) sits at the top-5/6 line with no independent scale account — had it ranked top-5, RQ4's obligation would be unmet for it; Mastra's exclusion rests on a license reading (V17); OpenClaw's 17% survey share is unclassifiable. Fourth, one growth table (E3) has unknown collection date and stale absolutes (V3) — deltas only. Fifth, the audit itself was a same-session distinct pass under the single-agent rule, not a separate-session audit; it re-derived all primaries and opened all contested pages, but a reader should know the independence mode.
+
+## Conflicts
+
+- Signal conflict — stars versus downloads as the measure of 'most production adoption'. Stars rank AutoGen (61.5K) and CrewAI (60.0K) on top with LangGraph (43.8K) below both; downloads rank LangChain (170.5M/month) and LangGraph (44.8M/month) an order of magnitude above CrewAI (2.4M/month) and AutoGen (0.79M/month). Stronger side for PRODUCTION adoption: downloads — the tracker's own methodology caveat explains that dependent/CI installs inflate download counts but stars measure attention, not deployment; AutoGen's stars leadership while in maintenance mode (V6) seals the interpretation. The report ranks by downloads and reports stars separately. ([E2], [E1], [E8], [E9], [E10], [E17])
+- Readiness conflict — Google ADK 1.0 was presented as production-ready while shipping breaking changes that broke existing users' code (upgrade failures documented in issues #808, #970, #978; official release notes list '⚠ BREAKING CHANGES'). Stronger side: the users — the breaking changes are in Google's own release notes; the 'production-ready' framing is marketing. Resolved in practice by Google's subsequent patching, but the pattern matters for anyone treating version milestones as operational guarantees. ([E26])
+
+## Uncertainties and gaps
+
+- The study behind 'agent frameworks appear in 18% of organizations running LLM applications, up from 9% a year earlier' (E5) is unnamed on the citing page and could not be traced in the bounded audit (V5) — the statistic is excluded from findings.
+- LinkedIn and Uber as LangGraph production users are vendor-asserted with no independent confirmation found; the Klarna echo chain traces to the vendor's own customer story (V8).
+- Pydantic AI (5.4M downloads/month, 20.8K stars) sits at the top-5/6 boundary with no independent scale-breakdown account surfaced by the planned RQ4 queries; ranking it top-5 would leave its RQ4 obligation unmet.
+- Mastra (29.0K stars, active) was excluded because its hybrid LICENSE.md (restricted ee/ portions) does not map to a recognized single OSS license (V17).
+- OpenClaw's 17% share in the April 2026 Stack Overflow pulse (E4) was not classified: personal-assistant gateway vs agent-framework boundary unresolved.
+- The six-month star-growth table (E3) has an unknown collection date and absolute counts stale against the live API (V3) — only its deltas are used.
+- Two promising independent sources were rejected because full pages could not be retrieved (Medium/TowardsAI LangGraph checkpointing postmortem — anti-bot wall; vdf.ai 2026-10-06 ten-framework roundup — fetch failure); per the recording rules, snippets were not recorded as evidence.
+- No independent source publishes a combined trailing-12-months adoption ranking; the composite ranking is constructed by this run from primary signals.
+
+## Actionable insights
+
+- If 'gained the most production adoption this year' means measured usage growth, the answer is OpenAI Agents SDK and Google ADK — both went from zero to top-4 monthly downloads in ~19 months. If it means largest installed base in production use, the answer is the LangChain stack, with LangGraph carrying the only widely echoed at-scale enterprise deployment (Klarna).
+- Do not rank adoption by GitHub stars: the stars order (AutoGen > CrewAI > LangGraph) inverts the usage order, and AutoGen's stars leadership coexists with maintenance mode and 0.79M monthly downloads.
+- Whichever framework is chosen, budget for a durability layer from day one: checkpointing is not durable execution — plan for crash detection, automatic retry, and duplicate prevention as application infrastructure, because no top-5 framework provides them.
+- For CrewAI specifically: cap agent loops (the retry default has no circuit breaker), avoid relying on hierarchical routing where decisions must be testable, and expect handoff context truncation unless intermediate outputs are passed explicitly.
+- Treat vendor 'production-ready' version labels as release markers, not operational guarantees — Google ADK 1.0 shipped breaking changes under that label, and the failure reports live in the vendor's own issue tracker.
+- For procurement decisions that need verified production proof, demand first-party postmortems from the deploying organization — the public record's production claims are overwhelmingly vendor-originated.
+
+## Sources
+
+| Source | URL | Date | Why it matters |
+|---|---|---|---|
+| Best AI Agent Frameworks in 2026 (AgentGid tracker, data as of 2026-10-24) | https://agentgid.com/guides/best-ai-agent-frameworks/ | unknown | independent tracker's download/star rankings; measurement caveat (CI inflation) |
+| Nine Agent Frameworks, Compared with Data and Code (Mike G Chambers) | https://blog.mikegchambers.com/posts/agentic-framework-landscape/ | unknown | independent 6-month star-growth deltas |
+| Top Agent Frameworks To Use in 2026 (Splunk, citing Stack Overflow April 2026 pulse) | https://www.splunk.com/en_us/blog/learn/agent-frameworks.html | unknown | survey-based adoption shares |
+| Microsoft retires AutoGen and debuts Agent Framework (VentureBeat) | https://venturebeat.com/orchestration/microsoft-retires-autogen-and-debuts-agent-framework-to-unify-and-govern | unknown | AutoGen retirement to maintenance |
+| PyPIStats recent downloads API + GitHub repository API (primary snapshots, queried 2026-10-24) | https://pypistats.org/api/packages/langchain/recent | live 2026-10-24/unknown | Mastra license exclusion basis; primary growth snapshot; primary snapshot (top-5/6 boundary); primary usage snapshot |
+| Building LangGraph: Designing an Agent Runtime from first principles (LangChain blog) | https://www.langchain.com/blog/building-langgraph | unknown | vendor-named production users |
+| Lessons From 2 Billion Agentic Workflows (CrewAI blog) | https://crewai.com/blog/lessons-from-2-billion-agentic-workflows | unknown | vendor volume claim + trust admission |
+| LangGraph in production: five failure patterns (perun.au) | https://perun.au/insights/langgraph-production/ | unknown | LangGraph failure patterns |
+| CrewAI in production: five failure patterns (perun.au) | https://perun.au/insights/crewai-production/ | unknown | CrewAI failure patterns |
+| Where CrewAI Broke in Two Systems I Migrated (Gianluca Mazza) | https://gianlucamazza.it/en/blog/crewai-multi-agent-production | unknown | CrewAI routing opacity |
+| CrewAI Gets You to the Demo. Then What? (Eric Barroca) | https://ebarroca.substack.com/p/crewai-gets-you-to-the-demo-then | unknown | CrewAI demo-vs-production critique |
+| Still Not Durable: MS Agent Framework & Strands (Diagrid, 2026-03-02) | https://www.diagrid.io/blog/still-not-durable-how-microsoft-agent-framework-and-strands-agents-repeat-the-same-mistake | 2026-03-02/unknown | MAF manual resume, source-inspected; durability gap across 3 frameworks |
+| OpenAI Agents are great. Production still needs a runtime. (ZenML, 2026-05-27) | https://www.zenml.io/blog/openai-agents-sdk-durable-runtime | 2026-05-27 | OpenAI SDK runtime gap |
+| OpenAI Agents SDK: Simple to Start, Easy to Outgrow? (Orange ITS) | https://www.orange-its.ch/en/insights/openai-agents-sdk-review | unknown | OpenAI SDK model lock-in |
+| 4 Google ADK Production Challenges and How to Solve Them (DLabs.AI) | https://dlabs.ai/blog/google-adk-production-challenges-and-how-to-solve-them | unknown | ADK 1.0 breaking-change reports |
+| Optimize and scale Agent Runtime performance (Google Cloud docs) | https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/optimize-and-scale | unknown | official cold-start figures |
+| 7 Google ADK Best Practices We Learned Building Production Applications (HatchWorks AI) | https://hatchworks.com/blog/gen-ai/google-adk-best-practices/ | unknown | ADK named production use |
+| Early Access to OpenAI's Agents API (deepsense.ai) | https://deepsense.ai/blog/early-access-to-openais-agents-api-what-we-learned-from-testing-it-on-enterprise-workflows/ | unknown | OpenAI API enterprise testing |
+| Rolled out LangGraph to 50 agents in production (Stackinsight community, 2026-07-21) | https://communities.stackinsight.net/community/aitr-langgraph/rolled-out-langgraph-to-50-agents-in-production-what-broke-and-how-we-fixed-it/ | 2026-07-21 | 50-agent LangGraph rollout account |
+
+## Limitations
+
+- Single-snapshot window: adoption signals were recorded 2026-10-24 against the trailing 12 months (2025-10 to 2026-10); nothing here measures trend beyond that window.
+- Public signals only: PyPI download counts include CI and dependent installs (upper bound on direct usage); stars measure attention; no private deployment data exists to check.
+- Production-use claims are vendor-originated or consultancy first-hand accounts; no deploying organization's independent postmortem was found for any framework except the anonymous 50-agent LangGraph rollout (community tier).
+- Ranking boundary sensitivity: Pydantic AI sits at the top-5/6 line without an independent scale account; Mastra excluded on license reading; OpenClaw unclassified — different boundary choices change the edges, not the head, of the ranking.
+- The independent audit was a same-session distinct pass (single-agent run per the verification rules), not a separate-session audit: it re-derived all primary numbers and opened all contested pages, but shared context with the research pass.
+- fetch_content tooling was unavailable in this environment; page excerpts were retrieved via direct HTTP fetches (curl) — two otherwise-promising sources (Medium/TowardsAI, vdf.ai) were rejected as unretrievable rather than recorded from snippets.
+
+*Citations [E#] refer to the evidence bundle (`02-evidence.json` in this run's archive); audit trail in `03-verification.json`. All four stage gates human-approved in order.*
