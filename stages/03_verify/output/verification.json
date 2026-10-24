@@ -218,6 +218,9 @@
     "Six-month growth deltas (V3) come from a page of unknown collection date — a future evaluation set should prefer API-derived deltas over blog tables."
   ],
   "gate": {
-    "approved": false
+    "approved": true,
+    "approved_by": "Aaron",
+    "date": "2026-10-23",
+    "notes": "Reasons read: audit opened pages and found primary corroboration (V13), staleness (V3), unnamed study (V5), vendor-echo chain (V8). E14 retag accepted."
   }
 }
