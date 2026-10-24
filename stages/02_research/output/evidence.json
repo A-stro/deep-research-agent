@@ -173,7 +173,7 @@
     },
     {
       "evidence_id": "E14",
-      "question_id": "RQ2",
+      "question_id": "RQ5",
       "claim": "Mastra's GitHub repository shows 29,039 stars and active pushes (2026-10-24), but the GitHub API reports its license as NOASSERTION — a recognized open-source license could not be confirmed from the API alone.",
       "source_title": "GitHub repository API: mastra-ai/mastra",
       "source_url": "https://api.github.com/repos/mastra-ai/mastra",
@@ -419,6 +419,6 @@
     "approved": true,
     "approved_by": "Aaron",
     "date": "2026-10-23",
-    "notes": "Spot-checked E8 (pypistats+GitHub API numbers), E18 (perun.au excerpt is page opening), E23 (diagrid dated 2026-03-02, source-inspected quote). Disagreement records satisfy."
+    "notes": "Spot-checked E8 (pypistats+GitHub API numbers), E18 (perun.au excerpt is page opening), E23 (diagrid dated 2026-03-02, source-inspected quote). Disagreement records satisfy. | Auditor retag 2026-10-23 (disclosed at stage-03 gate): E14 question_id RQ2->RQ5 — the Mastra license caveat is a ranking-boundary claim (RQ5), content unchanged."
   }
 }

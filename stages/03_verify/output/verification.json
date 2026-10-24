@@ -1,0 +1,223 @@
+{
+  "artifact": "VerificationReport",
+  "run_id": "2026-10-23-agent-framework-adoption",
+  "results": [
+    {
+      "result_id": "V1",
+      "claim": "Public adoption snapshots (PyPI monthly downloads and GitHub stars/forks/contributors/licenses) recorded for LangChain, LangGraph, CrewAI, AutoGen, OpenAI Agents SDK, Google ADK, Pydantic AI, and Mastra are accurate as of 2026-10-24.",
+      "evidence_ids": [
+        "E7",
+        "E8",
+        "E9",
+        "E10",
+        "E11",
+        "E12",
+        "E13",
+        "E14"
+      ],
+      "status": "verified",
+      "reason": "Auditor re-ran both APIs independently: every PyPI last-month figure matched exactly (170457766, 44769952, 2442764, 12449784, 10109331, 5383780, 379923); GitHub star counts drifted by single digits (live counters, e.g. LangGraph 43800 vs recorded 43794) — consistent with same-day retrieval, no discrepancy. Licenses re-confirmed (autogen CC-BY-4.0, mastra NOASSERTION).",
+      "confidence": "high"
+    },
+    {
+      "result_id": "V2",
+      "claim": "The agentgid weekly-download and star rankings (LangChain 39.1M/wk, LangGraph 14.4M/wk; stars LangChain 148K, AutoGen 61.5K, CrewAI 60K) are consistent with primary registry data.",
+      "evidence_ids": [
+        "E1",
+        "E2",
+        "E7",
+        "E8",
+        "E9",
+        "E10"
+      ],
+      "status": "verified",
+      "reason": "Page opened; tracker's weekly figures sit close to the pypistats last-week values the auditor re-ran (LangChain 39.1M vs 37.3M; LangGraph 14.4M vs 13.1M) — differences consistent with different measurement windows, not contradiction. Star rankings match live API magnitudes.",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V3",
+      "claim": "Six-month star-growth deltas (AutoGen +1,982; CrewAI +2,540; Google ADK +1,900 at 11 months of age; LangGraph +2,351; OpenAI Agents SDK +1,554 at 12 months) accurately describe trailing-2026 growth.",
+      "evidence_ids": [
+        "E3"
+      ],
+      "status": "partially_supported",
+      "reason": "The table's ABSOLUTE star counts are stale against the live API (LangGraph shown 26.1K vs 43.8K live 2026-10-24 — a ~17K gap no 6-month window closes), so the page predates the current snapshot by an unknown interval and its publication_date is unknown. The DELTAS remain the only usable part and are internally consistent with the young-framework pattern (E11/E12). Report must use deltas only and flag the unknown collection date.",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V4",
+      "claim": "Stack Overflow's April 2026 pulse survey (~1,100 developers) reported adoption of LangChain 22%, OpenClaw 17%, LangGraph 14%.",
+      "evidence_ids": [
+        "E4"
+      ],
+      "status": "verified",
+      "reason": "Page opened; the sentence appears as quoted with sample size and date. This verifies the citation, not the survey's methodology — a ~1,100-respondent pulse is self-selected and 'OpenClaw' is an ambiguous category (see unresolved questions).",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V5",
+      "claim": "Agent frameworks appear in 18% of organizations running LLM applications, up from 9% a year earlier.",
+      "evidence_ids": [
+        "E5"
+      ],
+      "status": "unresolved",
+      "reason": "The page attributes this to 'additional research' without naming the study, sample, or date. The auditor could not trace the underlying source within the bounded audit. Statistic is decision-relevant (org-level adoption) but provenance is anonymous — the report must either drop it or present it with this caveat.",
+      "confidence": "low"
+    },
+    {
+      "result_id": "V6",
+      "claim": "Microsoft retired AutoGen; Agent Framework is its sole agent framework and AutoGen/Semantic Kernel remain in maintenance mode.",
+      "evidence_ids": [
+        "E6",
+        "E10"
+      ],
+      "status": "verified",
+      "reason": "Press page opened and states it; direction corroborated by primary repo state the auditor re-checked (microsoft/autogen pushed_at 2026-10-16, both autogen PyPI packages summing to ~0.79M downloads/month vs 12.4M for the 19-month-old openai-agents) and by the migration guide's existence on learn.microsoft.com.",
+      "confidence": "high"
+    },
+    {
+      "result_id": "V7",
+      "claim": "OpenAI Agents SDK shows the fastest raw growth in the candidate set (30.2K stars and 12.4M monthly PyPI downloads within ~19 months of repo creation 2025-03-11).",
+      "evidence_ids": [
+        "E11",
+        "E3",
+        "E2"
+      ],
+      "status": "verified",
+      "reason": "API re-run match (12449784 downloads; 30247 stars). Corroborated by the independent +1,554-stars-in-6-months delta (E3) and by its appearance in agentgid's top-4 weekly downloads (E1). 'Fastest raw growth' holds among the ranked code frameworks; Dify/n8n (visual builders, out of scope boundary) were not compared.",
+      "confidence": "high"
+    },
+    {
+      "result_id": "V8",
+      "claim": "LinkedIn, Uber, and Klarna use LangGraph in production.",
+      "evidence_ids": [
+        "E15"
+      ],
+      "status": "partially_supported",
+      "reason": "The vendor page (opened) does name all three. Auditor hunted counterevidence/corroboration: Klarna-LangGraph is widely echoed (theapplied.co, Blockchain.News, Sequoia commentary) but every echo traces to LangChain's own customer story — vendor-originated, not independently confirmed. No third-party confirmation of the LinkedIn and Uber claims was found in the bounded audit. Production use is vendor-asserted; the report must say so.",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V9",
+      "claim": "LangGraph exhibits five recurring production failure patterns: unbounded checkpoint state, recursion-limit terminations, last-write-wins concurrent state loss, checkpointer connection exhaustion, and unresumable interrupt state after restart.",
+      "evidence_ids": [
+        "E18",
+        "E22",
+        "E30"
+      ],
+      "status": "verified",
+      "reason": "Cited page re-opened — the excerpt is the article's own failure-pattern summary, mechanism-specific and internally coherent. Direction corroborated by two sources the auditor did not gather: diagrid's durability analysis (E22) and the 50-agent rollout post (E30, now opened — see V16). No source contradicting the patterns was found.",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V10",
+      "claim": "CrewAI shows recurring production failure modes (silent context truncation, hierarchical stalls, unbroken tool loops, cost multiplication, memory inconsistency) and opaque hierarchical routing, and is oriented to demo velocity over production platform work.",
+      "evidence_ids": [
+        "E19",
+        "E20",
+        "E21",
+        "E16"
+      ],
+      "status": "verified",
+      "reason": "Three cited pages re-opened, each first-hand and mechanism-specific; the three are independent of each other (consultancy writeup, two-migration practitioner, enterprise-essay). Notably the vendor's own blog (E16) concedes trust/quality is 'the top barrier to production' — an admission consistent with the critiques. No contradicting source found.",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V11",
+      "claim": "Microsoft Agent Framework's resume is entirely manual — restore_from_checkpoint requires an explicit checkpoint_id, with no supervisor, scheduler, automatic restart, heartbeat, lease, or watchdog.",
+      "evidence_ids": [
+        "E23",
+        "E22"
+      ],
+      "status": "verified",
+      "reason": "Page re-opened; the author states the finding comes from reading the actual source code (Runner.restore_from_checkpoint), and the quote captured matches. Commercial interest (Diagrid sells durable-execution tooling) is disclosed on the same page and noted; direction is corroborated by ZenML's independent runtime-gap analysis for the adjacent OpenAI SDK (E24).",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V12",
+      "claim": "The OpenAI Agents SDK carries a model lock-in surface (designed around OpenAI APIs; provider switching requires work) and needs an external production runtime for durable execution.",
+      "evidence_ids": [
+        "E25",
+        "E24"
+      ],
+      "status": "verified",
+      "reason": "Both pages opened; lock-in description matches the SDK's documented OpenAI-API-centric design. Both sources have commercial interest in the runtime claim (ZenML sells one; Orange ITS sells consulting) — noted on each record and offset by consistency with E22/E23's durability findings.",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V13",
+      "claim": "Google ADK's 1.0 release broke existing users' code despite being presented as production-ready, with upgrade failures reported across GitHub issues.",
+      "evidence_ids": [
+        "E26"
+      ],
+      "status": "verified",
+      "reason": "DLabs quotes are second-hand developer statements, but the auditor found direct primary corroboration: the official v1.0.0 release notes (2025-05-20) list '⚠ BREAKING CHANGES' (eval schema, BuiltInCodeExecutor replacement, all services async), and issues #808 ('create_session Fails... for ADK 1.0.0'), #970, #978 ('Agent Engine is not ready for ADK 1.0.0') document upgrade failures. The subjective 'timed for the conference' framing remains opinion and is not relied on.",
+      "confidence": "high"
+    },
+    {
+      "result_id": "V14",
+      "claim": "Google's Agent Runtime documentation records ~4.7s cold-start latency at min_instances=1 under 300 concurrent requests (vs ~0.4s warm).",
+      "evidence_ids": [
+        "E27"
+      ],
+      "status": "verified",
+      "reason": "Official docs page opened; figures appear exactly as recorded. It is authoritative for platform behavior and is correctly classified contextual (vendor describing its own platform), not as the independent account RQ4 requires.",
+      "confidence": "high"
+    },
+    {
+      "result_id": "V15",
+      "claim": "CrewAI claims 2 billion agentic workflows executed cumulatively.",
+      "evidence_ids": [
+        "E16"
+      ],
+      "status": "verified",
+      "reason": "Page opened; the figure is the article's title and framing, so the claim 'CrewAI claims X' is accurate. The 2B number itself is an unaudited vendor metric with no stated methodology — the report must present it as a vendor-claimed volume, never as measured adoption.",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V16",
+      "claim": "A practitioner post reports rolling LangGraph from 5 to 50 production agents with the main pain in surrounding ops and resource management rather than graph logic.",
+      "evidence_ids": [
+        "E30"
+      ],
+      "status": "verified",
+      "reason": "Resolves the retrieval flag on this record: the page was opened in the audit pass (277KB, post present, dated 21/07/2026, author 'cost_cutter_99') and the recorded excerpt appears verbatim at the top of the post. Source remains an anonymous community account — retained as community-tier evidence only.",
+      "confidence": "medium"
+    },
+    {
+      "result_id": "V17",
+      "claim": "Mastra's license could not be confirmed as a recognized open-source license from the GitHub API (NOASSERTION), excluding it from the strict candidate set.",
+      "evidence_ids": [
+        "E14"
+      ],
+      "status": "verified",
+      "reason": "API re-run still reports NOASSERTION; the auditor opened the repository's LICENSE.md, which is a hybrid/custom license file ('Portions of this software are licensed as follows...', with restricted 'ee/' directory terms) — explaining the NOASSERTION mapping and confirming that a recognized single OSS license (e.g., MIT/Apache-2.0) does not cover the whole work. Exclusion from the strict candidate set stands, now with the reason resolved rather than unknown.",
+      "confidence": "high"
+    },
+    {
+      "result_id": "V18",
+      "claim": "Stars and downloads rank the candidate frameworks differently (stars: AutoGen 61.5K > CrewAI 60K > LangChain 148K aside, LangGraph 43.8K below both; downloads: LangChain 170.5M > LangGraph 44.8M >> CrewAI 2.4M monthly), so 'most production adoption' depends on which signal is privileged and download counts are CI/dependency-inflated.",
+      "evidence_ids": [
+        "E17",
+        "E2",
+        "E1",
+        "E8",
+        "E9",
+        "E10"
+      ],
+      "status": "verified",
+      "reason": "Auditor re-derived both rankings from primary APIs (V1) and compared against the tracker's rankings (V2): the disagreement is real and quantified — CrewAI leads LangGraph on stars (60.0K vs 43.8K) while LangGraph's monthly downloads are ~18x CrewAI's (44.8M vs 2.4M). The tracker's own methodology caveat (E17, page opened) explains the direction: dependent installs inflate the LangChain stack. The report must present both signals and state which definition of adoption it ranks by.",
+      "confidence": "high"
+    }
+  ],
+  "unresolved_questions": [
+    "The study behind '18% of organizations running LLM applications, up from 9%' (E5) is unnamed on the citing page — trace it or drop the statistic from the report.",
+    "LinkedIn and Uber as LangGraph production users remain vendor-asserted with no independent confirmation found; only Klarna has a third-party echo chain, and it traces to the same vendor-origin story (V8).",
+    "Pydantic AI (5.4M downloads/month, 20.8K stars) sits at the top-5/6 boundary with no independent scale-breakdown account surfaced by the planned RQ4 queries — if the report ranks it top-5, the RQ4 independence obligation is unmet for it.",
+    "OpenClaw's 17% share in the April 2026 pulse survey (E4) is unclassified: personal-assistant gateway vs agent-framework boundary unresolved.",
+    "Six-month growth deltas (V3) come from a page of unknown collection date — a future evaluation set should prefer API-derived deltas over blog tables."
+  ],
+  "gate": {
+    "approved": false
+  }
+}
