@@ -1,0 +1,111 @@
+{
+  "artifact": "ResearchPlan",
+  "run_id": "2026-10-23-agent-framework-adoption",
+  "query": "Which open-source agent frameworks gained the most production adoption this year, and what do independent (non-vendor) sources say about where each breaks down at scale?",
+  "scope_constraints": [
+    "Open-source agent frameworks only: public repository plus a recognized open-source license; closed or proprietary-only platforms are out of scope",
+    "'This year' is interpreted as the trailing 12 months ending at the run date (2025-10 through 2026-10); the report states this window explicitly",
+    "Break-down-at-scale claims must come from independent (non-vendor) sources — vendor documentation may characterize limits but cannot satisfy this obligation alone",
+    "Adoption is measured only through public signals (downloads, contributors, star growth, named production case studies); no private usage data exists to check",
+    "Exhaustive coverage of every open-source agent framework is not promised: the run ranks the most-adopted candidates it can evidence and reports the rest as gaps"
+  ],
+  "research_questions": [
+    {
+      "id": "RQ1",
+      "question": "Which open-source agent frameworks form the current (2026) candidate set from which 'most production adoption' can be measured?",
+      "priority": "high",
+      "success_criteria": [
+        "At least 5 named open-source agent frameworks, each with a public repository URL and license recorded",
+        "Each named framework has commits or a release within the trailing 12 months (maintenance check)",
+        "At least one independent (non-vendor) 2025-2026 source naming the leading frameworks is recorded"
+      ]
+    },
+    {
+      "id": "RQ2",
+      "question": "For each shortlisted framework, what do public adoption signals show over the trailing 12 months — downloads, contributors, star growth, and named production use?",
+      "priority": "high",
+      "success_criteria": [
+        "At least 2 dated, quantitative adoption signals per shortlisted framework, each with a source URL (registry stats page, repository page, or named production case study)",
+        "Usage signals (downloads, production case studies) distinguished from mindshare signals (stars, rankings) in the recorded evidence"
+      ]
+    },
+    {
+      "id": "RQ3",
+      "question": "Which frameworks rank as having gained the most production adoption this year, and where do the adoption signals disagree with each other?",
+      "priority": "high",
+      "success_criteria": [
+        "A ranked top-3 to top-5 with every rank traceable to recorded RQ2 signals (no rank from memory)",
+        "Signal disagreements recorded where they occur (e.g., star growth without download growth), with both sources cited"
+      ]
+    },
+    {
+      "id": "RQ4",
+      "question": "What do independent (non-vendor) sources say about where each top-ranked framework breaks down at scale in production?",
+      "priority": "high",
+      "success_criteria": [
+        "At least 1 independent source per top-5 framework naming a specific scale limit (concurrency/orchestration, state and memory, observability, cost, team workflow), with the limiting passage quoted or closely paraphrased plus URL and date",
+        "Each source's independence from the framework vendor is recorded (engineering postmortem, practitioner thread, benchmark study, or third-party analysis)"
+      ]
+    },
+    {
+      "id": "RQ5",
+      "question": "What caveats bound the conclusion — where is independent evidence missing or thin, and what would change the ranking?",
+      "priority": "medium",
+      "success_criteria": [
+        "Per-framework evidence gaps recorded for any top-5 framework lacking an independent scale account",
+        "A stated list of what this run does not establish (e.g., no private deployment data, single-snapshot adoption window)"
+      ]
+    }
+  ],
+  "search_strategy": [
+    {
+      "question_id": "RQ1",
+      "queries": [
+        "best open-source AI agent frameworks 2026 comparison",
+        "most popular AI agent frameworks 2025 2026 production adoption"
+      ],
+      "source_types": ["independent", "community"]
+    },
+    {
+      "question_id": "RQ2",
+      "queries": [
+        "per-candidate registry lookups: PyPI/npm download statistics page for each RQ1 framework (pypistats.org, npmjs.com, pepy.tech)",
+        "per-candidate repository lookups: GitHub stars, contributors, last-commit page for each RQ1 framework",
+        "named production deployments: '<framework> production case study 2025 2026' for each shortlisted framework"
+      ],
+      "source_types": ["official", "primary", "independent"]
+    },
+    {
+      "question_id": "RQ3",
+      "queries": [
+        "no new search — rank from RQ1/RQ2 recorded evidence; re-open an already-surfaced page only if a signal needs verification"
+      ],
+      "source_types": ["primary"]
+    },
+    {
+      "question_id": "RQ4",
+      "queries": [
+        "practitioner accounts per top-5 framework: '<framework>' at scale OR in production limitations OR lessons learned (engineering blogs, postmortems)",
+        "community practitioner threads per top-5 framework: Hacker News or Reddit '<framework>' production pain points 2025 2026"
+      ],
+      "source_types": ["independent", "community"]
+    },
+    {
+      "question_id": "RQ5",
+      "queries": [
+        "no new search — gaps compiled from RQ1-RQ4 evidence records"
+      ],
+      "source_types": ["independent"]
+    }
+  ],
+  "required_evidence": [
+    "Candidate set of at least 5 maintained open-source agent frameworks named by at least one independent 2025-2026 source",
+    "At least 2 dated adoption signals with source URLs per shortlisted framework (registry or repository stats, named production case studies)",
+    "A ranked top-3 to top-5 in which every rank traces to recorded signals",
+    "At least 1 independent (non-vendor) scale-limit account per top-5 framework, with limiting passage and date",
+    "Recorded gaps: frameworks dropped for missing evidence, and scale claims that only vendor sources support"
+  ],
+  "gate": {
+    "approved": false
+  }
+}
