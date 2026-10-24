@@ -64,7 +64,10 @@
         "best open-source AI agent frameworks 2026 comparison",
         "most popular AI agent frameworks 2025 2026 production adoption"
       ],
-      "source_types": ["independent", "community"]
+      "source_types": [
+        "independent",
+        "community"
+      ]
     },
     {
       "question_id": "RQ2",
@@ -73,14 +76,20 @@
         "per-candidate repository lookups: GitHub stars, contributors, last-commit page for each RQ1 framework",
         "named production deployments: '<framework> production case study 2025 2026' for each shortlisted framework"
       ],
-      "source_types": ["official", "primary", "independent"]
+      "source_types": [
+        "official",
+        "primary",
+        "independent"
+      ]
     },
     {
       "question_id": "RQ3",
       "queries": [
         "no new search — rank from RQ1/RQ2 recorded evidence; re-open an already-surfaced page only if a signal needs verification"
       ],
-      "source_types": ["primary"]
+      "source_types": [
+        "primary"
+      ]
     },
     {
       "question_id": "RQ4",
@@ -88,14 +97,19 @@
         "practitioner accounts per top-5 framework: '<framework>' at scale OR in production limitations OR lessons learned (engineering blogs, postmortems)",
         "community practitioner threads per top-5 framework: Hacker News or Reddit '<framework>' production pain points 2025 2026"
       ],
-      "source_types": ["independent", "community"]
+      "source_types": [
+        "independent",
+        "community"
+      ]
     },
     {
       "question_id": "RQ5",
       "queries": [
         "no new search — gaps compiled from RQ1-RQ4 evidence records"
       ],
-      "source_types": ["independent"]
+      "source_types": [
+        "independent"
+      ]
     }
   ],
   "required_evidence": [
@@ -106,6 +120,9 @@
     "Recorded gaps: frameworks dropped for missing evidence, and scale claims that only vendor sources support"
   ],
   "gate": {
-    "approved": false
+    "approved": true,
+    "approved_by": "Aaron",
+    "date": "2026-10-23",
+    "notes": "Plan read against query: RQ1-RQ5 chain answers it; window pinned to trailing 12 months"
   }
 }
