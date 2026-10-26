@@ -11,7 +11,7 @@
 //   node tools/validate.mjs verification     # validate stage 03 (+ evidence cross-refs)
 //   node tools/validate.mjs report           # validate stage 04 (+ all cross-refs)
 //   node tools/validate.mjs run              # whole chain + completion verdict
-//   node tools/validate.mjs archive <run-dir>  # validate an archived run in runs/<run_id>/ — same checks, archive filenames
+//   node tools/validate.mjs archive <abs dir>  # validate an archived run in runs/<run_id>/ — same checks, archive filenames
 //   node tools/validate.mjs file <path> <schema-name>   # ad-hoc: validate any JSON against a schema
 //
 // Deterministic checks confirm a citation exists and resolves to a recorded
@@ -20,7 +20,7 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, basename } from "node:path";
+import { dirname, join, basename, resolve, relative, isAbsolute } from "node:path";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SCHEMAS = join(ROOT, "_shared", "schemas");
@@ -277,9 +277,19 @@ else if (cmd === "run") {
   }
 } else if (cmd === "archive") {
   const runDir = process.argv[3];
-  if (!runDir) { console.error("usage: node tools/validate.mjs archive <runs/<run_id> directory>"); process.exit(2); }
-  if (!existsSync(runDir)) { console.error(`archive directory not found: ${runDir}`); process.exit(1); }
-  validateArchive(runDir);
+  if (!runDir) { console.error(`usage: node tools/validate.mjs archive <absolute path under ${join(ROOT, "runs")}>`); process.exit(2); }
+  if (!isAbsolute(runDir)) {
+    console.error(`archive directory must be an absolute path under ${join(ROOT, "runs")}: ${runDir}`);
+    process.exit(2);
+  }
+  const abs = resolve(runDir);
+  const rel = relative(join(ROOT, "runs"), abs);
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    console.error(`archive directory must be under ${join(ROOT, "runs")}: ${runDir}`);
+    process.exit(2);
+  }
+  if (!existsSync(abs)) { console.error(`archive directory not found: ${runDir}`); process.exit(1); }
+  validateArchive(abs);
 } else {
   console.error(`unknown command: ${cmd}`);
   process.exit(2);
