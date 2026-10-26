@@ -1,7 +1,7 @@
 # Run manifest — 2026-10-23-agent-framework-adoption
 
 - **Query:** Which open-source agent frameworks gained the most production adoption this year, and what do independent (non-vendor) sources say about where each breaks down at scale? (query-type 1b-02, CrewAI M1 Lab 2 style-of → verbatim)
-- **Opened:** 2026-10-23 · **Closed:** 2026-10-23
+- **Opened:** 2026-10-23 · **Closed:** 2026-10-24 (all dates New York local time)
 - **Verdict:** COMPLETE
 - **Questions:** 5 · **Evidence records:** 30 · **Gaps:** 5 · **Verification results:** 18 (15 verified / 2 partially_supported / 0 contradicted / 1 unresolved)
 

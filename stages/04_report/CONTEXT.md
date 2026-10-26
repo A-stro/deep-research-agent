@@ -24,4 +24,8 @@ Do NOT load: prior runs, the roadmap, the whole `_shared/` folder. Do NOT add UR
 - `report.md` → `output/` (rendered from report.json)
 
 ## Human check
-Read the executive summary, then one finding at random and follow its citations to the evidence record and the URL. Does the summary claim anything no source supports? Edit `report.json` (and re-render the markdown), set `gate.approved: true`. Then archive the run: copy `_templates/run/` to `runs/<run_id>/`, move the artifacts in per the manifest, add the line to `runs/index.md`, and clear the stage `output/` folders for the next run.
+Read the executive summary, then one finding at random and follow its citations to the evidence record and the URL. Does the summary claim anything no source supports? Edit `report.json` (and re-render the markdown), set `gate.approved: true`. Then archive the run: copy `_templates/run/` to `runs/<run_id>/`, move the artifacts in per the manifest, add the line to `runs/index.md`, and clear the stage `output/` folders for the next run. Then prove it: `node tools/validate.mjs archive runs/<run_id>` — the archive must pass the same deterministic checks the staging chain did.
+
+Conventions:
+- The markdown renders `report.json` and must never assert approvals the JSON does not record. Render gate approval claims from `gate.approved` — before the final gate, say "gates pending", not "all gates human-approved".
+- Record dates (`gate.date`, manifest open/close, run_id) as the local calendar date where the human approving works — New York time in this workspace.

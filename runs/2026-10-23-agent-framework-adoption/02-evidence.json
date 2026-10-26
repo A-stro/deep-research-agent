@@ -418,7 +418,7 @@
   "gate": {
     "approved": true,
     "approved_by": "Aaron",
-    "date": "2026-10-23",
+    "date": "2026-10-24",
     "notes": "Spot-checked E8 (pypistats+GitHub API numbers), E18 (perun.au excerpt is page opening), E23 (diagrid dated 2026-03-02, source-inspected quote). Disagreement records satisfy. | Auditor retag 2026-10-23 (disclosed at stage-03 gate): E14 question_id RQ2->RQ5 — the Mastra license caveat is a ranking-boundary claim (RQ5), content unchanged."
   }
 }

@@ -220,7 +220,7 @@
   "gate": {
     "approved": true,
     "approved_by": "Aaron",
-    "date": "2026-10-23",
+    "date": "2026-10-24",
     "notes": "Reasons read: audit opened pages and found primary corroboration (V13), staleness (V3), unnamed study (V5), vendor-echo chain (V8). E14 retag accepted."
   }
 }

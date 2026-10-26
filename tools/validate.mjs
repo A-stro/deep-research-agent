@@ -11,6 +11,7 @@
 //   node tools/validate.mjs verification     # validate stage 03 (+ evidence cross-refs)
 //   node tools/validate.mjs report           # validate stage 04 (+ all cross-refs)
 //   node tools/validate.mjs run              # whole chain + completion verdict
+//   node tools/validate.mjs archive <run-dir>  # validate an archived run in runs/<run_id>/ — same checks, archive filenames
 //   node tools/validate.mjs file <path> <schema-name>   # ad-hoc: validate any JSON against a schema
 //
 // Deterministic checks confirm a citation exists and resolves to a recorded
@@ -19,7 +20,7 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, basename } from "node:path";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SCHEMAS = join(ROOT, "_shared", "schemas");
@@ -205,9 +206,33 @@ function stageReport() {
   const plan = planOf(), ev = evidenceOf(), ver = loadJson(OUT.verification, "verification");
   if (plan && rep.run_id !== plan.run_id) fail(`report: run_id mismatch`);
   if (errors.length === 0 && plan && ev && ver) checkReportCross(plan, ev, ver, rep);
-  if (existsSync(join(ROOT, "stages", "04_report", "output", "report.md"))) ok("report: report.md rendering exists");
+  const md = ["report.md", "05-report.md"].map((n) => join(dirname(OUT.report), n)).find(existsSync);
+  if (md) ok(`report: report.md rendering exists (${basename(md)})`);
   else fail("report: report.md rendering missing");
   return rep;
+}
+
+// ---------- archive validation ----------
+// Points the artifact loaders at an archived run directory (runs/<run_id>/)
+// so the same schemas and cross-artifact checks apply to archive filenames.
+function validateArchive(runDir) {
+  for (const [key, name] of [["plan", "01-plan.json"], ["evidence", "02-evidence.json"], ["verification", "03-verification.json"], ["report", "04-report.json"]]) {
+    const p = join(runDir, name);
+    if (!existsSync(p)) fail(`${name}: missing from archive`);
+    else OUT[key] = p;
+  }
+  const runId = basename(runDir);
+  if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/.test(runId)) fail(`archive folder name "${runId}" does not match ^YYYY-MM-DD-slug$`);
+  if (!existsSync(join(runDir, "manifest.md"))) fail("manifest.md: missing from archive");
+  const plan = stagePlan(); const ev = stageEvidence(); const ver = stageVerification(); const rep = stageReport();
+  for (const doc of [plan, ev, ver, rep]) if (doc && doc.run_id !== runId) fail(`run_id "${doc.run_id}" does not match archive folder name "${runId}"`);
+  checkGatesInOrder(["plan", "evidence", "verification", "report"]);
+  if (errors.length === 0 && plan && ev && ver && rep) {
+    const allApproved = [plan, ev, ver, rep].every((x) => x.gate?.approved);
+    if (allApproved) console.log(`ARCHIVE VALID — ${runId}: all artifacts validate against folder-name run_id, all gates approved in order.`);
+    else console.error(`Archive is structurally valid but a gate is not approved — ${runId} must not be archived as COMPLETE.`);
+    process.exit(allApproved ? 0 : 1);
+  }
 }
 
 // ---------- commands ----------
@@ -250,6 +275,11 @@ else if (cmd === "run") {
       console.log("Chain valid — all artifacts validate; a human gate is still pending. The run is not complete until the last gate is approved.");
     }
   }
+} else if (cmd === "archive") {
+  const runDir = process.argv[3];
+  if (!runDir) { console.error("usage: node tools/validate.mjs archive <runs/<run_id> directory>"); process.exit(2); }
+  if (!existsSync(runDir)) { console.error(`archive directory not found: ${runDir}`); process.exit(1); }
+  validateArchive(runDir);
 } else {
   console.error(`unknown command: ${cmd}`);
   process.exit(2);

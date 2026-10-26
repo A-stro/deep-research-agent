@@ -1,6 +1,6 @@
 # Which open-source agent frameworks gained the most production adoption this year, and what do independent (non-vendor) sources say about where each breaks down at scale?
 
-**Run:** `2026-10-23-agent-framework-adoption` · Evidence-gated research pipeline (plan → evidence → independent audit → report; all gates human-approved)
+**Run:** `2026-10-23-agent-framework-adoption` · Evidence-gated research pipeline (plan → evidence → independent audit → report; approval state tracked per artifact — see `gate.approved` in `01-plan.json`, `02-evidence.json`, `03-verification.json`, `04-report.json`)
 
 ## Executive summary
 
@@ -100,4 +100,4 @@ The caveats that bound every conclusion above are structural, not incidental. Fi
 - The independent audit was a same-session distinct pass (single-agent run per the verification rules), not a separate-session audit: it re-derived all primary numbers and opened all contested pages, but shared context with the research pass.
 - fetch_content tooling was unavailable in this environment; page excerpts were retrieved via direct HTTP fetches (curl) — two otherwise-promising sources (Medium/TowardsAI, vdf.ai) were rejected as unretrievable rather than recorded from snippets.
 
-*Citations [E#] refer to the evidence bundle (`02-evidence.json` in this run's archive); audit trail in `03-verification.json`. All four stage gates human-approved in order.*
+*Citations [E#] refer to the evidence bundle (`02-evidence.json` in this run's archive); audit trail in `03-verification.json`. Gate approvals are recorded in each artifact's `gate` field — this report's own gate: `approved: true`, approved_by "Aaron", date 2026-10-24 (New York time).*
