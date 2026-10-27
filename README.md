@@ -22,8 +22,15 @@ Nothing moves to the next stage until a person has read the output of the last o
 ## Quick start
 
 ```bash
-node tools/validate.mjs status   # live state of the stage chain
-node tools/validate.mjs run      # full gate-ordered completion check
+cargo run --manifest-path tools/Cargo.toml --bin validate -- status   # live state of the stage chain
+cargo run --manifest-path tools/Cargo.toml --bin validate -- run      # full gate-ordered completion check
+```
+
+Or install the binary:
+```bash
+cargo install --path tools/validate-cli
+validate status
+validate run
 ```
 
 Zero dependencies — the validator is plain Node (≥18). Start a run at `stages/01_plan/CONTEXT.md`; the folder sequence is the procedure, and each stage's `CONTEXT.md` says exactly what its gate requires.

@@ -17,7 +17,7 @@ Do NOT load: the researcher's reasoning or conclusions as proof — that is the 
 4. Record one result per claim: `V1`, `V2`, … — status (`verified` / `partially_supported` / `contradicted` / `unresolved`), the evidence IDs examined, a reason stating what the independent check found (staleness, weak sourcing, a page that does not say what is claimed), and a word-level confidence judgment. Follow `references/verification-rules.md`.
 5. Record contradictions; do not silently resolve them. Preserve uncertainty — `unresolved` is a valid, honest outcome.
 6. Write `verification.json` to `output/` with `gate.approved: false`.
-7. Validate: `node tools/validate.mjs verification`.
+7. Validate: `cargo run --manifest-path ../../tools/Cargo.toml --bin validate -- verification`.
 
 ## Outputs
 - `verification.json` → `output/` (validates against the VerificationReport schema)

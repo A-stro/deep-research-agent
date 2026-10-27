@@ -16,7 +16,7 @@ Do NOT load: the plan's question-decomposition guide, other stages' references, 
 3. Prefer primary/official/authoritative sources. Reject stale, redundant, or SEO-heavy ones — and say so in the notes.
 4. If a question cannot be answered, record it in `gaps` with what you tried. Never invent a date, a quote, or a URL.
 5. Write `evidence.json` to `output/` with `gate.approved: false`.
-6. Validate: `node tools/validate.mjs evidence`.
+6. Validate: `cargo run --manifest-path ../../tools/Cargo.toml --bin validate -- evidence`.
 7. Present to the human. No verification work happens before the gate.
 
 ## Outputs

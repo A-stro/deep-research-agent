@@ -12,6 +12,6 @@ The flow in one line: plan it, evidence it, audit it, report it.
 Factory (stable, every run): `_shared/` — schemas, design principles, infrastructure, roadmap.
 Product (new each run): each stage's `output/`; completed runs archived to `runs/<run_id>/`.
 
-Status is whatever exists: a stage is COMPLETE when its `output/` holds an artifact **whose gate is approved** — run `node tools/validate.mjs status` for the live chain state. A placeholder that only keeps the empty folder in git does not count.
+Status is whatever exists: a stage is COMPLETE when its `output/` holds an artifact **whose gate is approved** — run `cargo run --manifest-path tools/Cargo.toml --bin validate -- status` for the live chain state. A placeholder that only keeps the empty folder in git does not count.
 
 The stages deliberately mirror the equivalence spec's minimal workflow: Planner → Researcher(s) → independent evidence audit → report synthesis, each boundary a human gate. Full north-star architecture and experiment progression: `_shared/roadmap.md`.

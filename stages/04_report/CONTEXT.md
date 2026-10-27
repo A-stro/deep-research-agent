@@ -16,7 +16,7 @@ Do NOT load: prior runs, the roadmap, the whole `_shared/` folder. Do NOT add UR
 2. Write one `detailed_analysis` section per research question (`RQ1`, …) — analysis that connects findings to each other, not a source-by-source dump. Follow `references/report-structure.md`.
 3. `actionable_insights` answer the query's actual intent. `limitations` records what this run could not establish.
 4. Render `report.md` **from the validated `report.json`** — it is a presentation, never a second source of facts.
-5. Set `gate.approved: false`, then validate the whole chain: `node tools/validate.mjs run`.
+5. Set `gate.approved: false`, then validate the whole chain: `cargo run --manifest-path ../../tools/Cargo.toml --bin validate -- run`.
 6. On a green `run` validation, present the report to the human.
 
 ## Outputs
@@ -24,7 +24,7 @@ Do NOT load: prior runs, the roadmap, the whole `_shared/` folder. Do NOT add UR
 - `report.md` → `output/` (rendered from report.json)
 
 ## Human check
-Read the executive summary, then one finding at random and follow its citations to the evidence record and the URL. Does the summary claim anything no source supports? Edit `report.json` (and re-render the markdown), set `gate.approved: true`. Then archive the run: copy `_templates/run/` to `runs/<run_id>/`, move the artifacts in per the manifest, add the line to `runs/index.md`, and clear the stage `output/` folders for the next run. Then prove it: `node tools/validate.mjs archive runs/<run_id>` — the archive must pass the same deterministic checks the staging chain did.
+Read the executive summary, then one finding at random and follow its citations to the evidence record and the URL. Does the summary claim anything no source supports? Edit `report.json` (and re-render the markdown), set `gate.approved: true`. Then archive the run: copy `_templates/run/` to `runs/<run_id>/`, move the artifacts in per the manifest, add the line to `runs/index.md`, and clear the stage `output/` folders for the next run. Then prove it: `cargo run --manifest-path ../../tools/Cargo.toml --bin validate -- archive runs/<run_id>` — the archive must pass the same deterministic checks the staging chain did.
 
 Conventions:
 - The markdown renders `report.json` and must never assert approvals the JSON does not record. Render gate approval claims from `gate.approved` — before the final gate, say "gates pending", not "all gates human-approved".
