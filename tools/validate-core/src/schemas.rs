@@ -1,9 +1,9 @@
 //! Schema loading and $ref resolution within _shared/schemas/.
 
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
-use serde_json::Value;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct SchemaDoc {
@@ -19,30 +19,51 @@ pub struct SchemaCache {
 
 impl SchemaCache {
     pub fn new(schemas_dir: PathBuf) -> Result<Self, String> {
-        if !schemas_dir.exists() {
-            return Err(format!("schemas directory not found: {}", schemas_dir.display()));
+        let canonical = fs::canonicalize(&schemas_dir)
+            .map_err(|e| format!("failed to canonicalize schemas dir: {}", e))?;
+        if !canonical.exists() {
+            return Err(format!(
+                "schemas directory not found: {}",
+                canonical.display()
+            ));
         }
         Ok(Self {
             cache: HashMap::new(),
-            schemas_dir,
+            schemas_dir: canonical,
         })
     }
 
     fn resolve_schema_path(&self, name: &str) -> Result<PathBuf, String> {
+        // Reject any path traversal or absolute paths
+        if name.contains("..") || name.starts_with('/') || name.contains("://") {
+            return Err(format!(
+                "schema not found: {} (traversal/absolute rejected)",
+                name
+            ));
+        }
+
         let candidates = [
             name.to_string(),
             format!("{}.json", name),
             format!("{}.schema.json", name),
         ];
+
         for c in &candidates {
             if c.ends_with(".json") {
                 let p = self.schemas_dir.join(c);
-                if p.exists() {
-                    return Ok(p);
+                // Canonicalize and ensure it stays within schemas_dir
+                let canonical = fs::canonicalize(&p)
+                    .map_err(|_| format!("schema not found: {} (not found)", c))?;
+                if !canonical.starts_with(&self.schemas_dir) {
+                    return Err(format!("schema not found: {} (escapes schemas dir)", c));
                 }
+                return Ok(canonical);
             }
         }
-        Err(format!("schema not found: {}", candidates.join(", ")))
+        Err(format!(
+            "schema not found: {} (no valid .json extension)",
+            name
+        ))
     }
 
     pub fn get(&mut self, name: &str) -> Result<&SchemaDoc, String> {
@@ -63,7 +84,12 @@ impl SchemaCache {
     }
 
     /// Resolve a $ref like "gate.schema.json#/definitions/gate"
-    pub fn resolve_ref(&mut self, ref_str: &str) -> Result<Value, String> {
+    pub fn resolve_ref(&mut self, ref_str: &str, depth: usize) -> Result<Value, String> {
+        const MAX_REF_DEPTH: usize = 50;
+        if depth > MAX_REF_DEPTH {
+            return Err(format!("recursive $ref detected: {}", ref_str));
+        }
+
         let (file_part, pointer_part) = match ref_str.split_once('#') {
             Some((f, p)) => (f, Some(p)),
             None => (ref_str, None),
@@ -74,7 +100,10 @@ impl SchemaCache {
             for segment in pointer.split('/').skip(1) {
                 let decoded = percent_decode(segment);
                 node = node.get(&decoded).ok_or_else(|| {
-                    format!("bad $ref pointer: {} (segment '{}' not found)", ref_str, segment)
+                    format!(
+                        "bad $ref pointer: {} (segment '{}' not found)",
+                        ref_str, segment
+                    )
                 })?;
             }
         }
@@ -91,10 +120,12 @@ fn percent_decode(s: &str) -> String {
 pub fn find_project_root() -> Result<PathBuf, String> {
     if let Ok(dra_root) = std::env::var("DRA_ROOT") {
         let p = PathBuf::from(dra_root);
-        if p.join("_shared/schemas").exists() && p.join("stages").exists() {
-            return Ok(p);
+        let canonical =
+            fs::canonicalize(&p).map_err(|e| format!("DRA_ROOT canonicalization failed: {}", e))?;
+        if canonical.join("_shared/schemas").exists() && canonical.join("stages").exists() {
+            return Ok(canonical);
         }
-        return Err(format!("DRA_ROOT set but invalid: {}", p.display()));
+        return Err(format!("DRA_ROOT set but invalid: {}", canonical.display()));
     }
 
     let cwd = std::env::current_dir().map_err(|e| format!("failed to get cwd: {}", e))?;

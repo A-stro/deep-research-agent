@@ -28,12 +28,12 @@ impl OutputFormatter {
         }
     }
 
-    pub fn has_errors(&self) -> bool {
-        !self.errors.is_empty()
-    }
-
     pub fn exit_code(&self) -> i32 {
-        if self.errors.is_empty() { 0 } else { 1 }
+        if self.errors.is_empty() {
+            0
+        } else {
+            1
+        }
     }
 }
 
@@ -47,7 +47,10 @@ pub fn print_run_state(produced: usize, pending_gates: &[String]) {
     if produced == 4 && pending_gates.is_empty() {
         println!("Run state: chain complete — archive via _templates/run → runs/");
     } else if produced == 4 {
-        println!("Run state: all artifacts produced; gate pending on {} — approve before archiving.", pending_gates.join(", "));
+        println!(
+            "Run state: all artifacts produced; gate pending on {} — approve before archiving.",
+            pending_gates.join(", ")
+        );
     } else {
         println!("Run state: in progress ({}/4 artifacts)", produced);
     }

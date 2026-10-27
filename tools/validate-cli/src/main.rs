@@ -3,13 +3,18 @@
 mod cli;
 mod output;
 
+use crate::cli::{find_project_root, Command};
+use crate::output::{print_run_state, print_status, OutputFormatter};
+use serde_json::Value;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
-use serde_json::Value;
-use validate_core::{schemas::SchemaCache, validate::Validator, cross_check::CrossChecker, archive::{validate_archive, canonicalize_archive_path}};
-use crate::cli::{Command, find_project_root};
-use crate::output::{OutputFormatter, print_status, print_run_state};
+use std::path::{Path, PathBuf};
+use validate_core::{
+    archive::{canonicalize_archive_path, validate_archive},
+    cross_check::CrossChecker,
+    schemas::SchemaCache,
+    validate::Validator,
+};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -42,9 +47,27 @@ fn main() {
     match cmd {
         Command::Status => handle_status(&project_root, &mut cache),
         Command::Plan => handle_stage(&project_root, &mut cache, "plan", &["plan"], &[]),
-        Command::Evidence => handle_stage(&project_root, &mut cache, "evidence", &["plan", "evidence"], &["plan"]),
-        Command::Verification => handle_stage(&project_root, &mut cache, "verification", &["plan", "evidence", "verification"], &["plan", "evidence"]),
-        Command::Report => handle_stage(&project_root, &mut cache, "report", &["plan", "evidence", "verification", "report"], &["plan", "evidence", "verification"]),
+        Command::Evidence => handle_stage(
+            &project_root,
+            &mut cache,
+            "evidence",
+            &["plan", "evidence"],
+            &["plan"],
+        ),
+        Command::Verification => handle_stage(
+            &project_root,
+            &mut cache,
+            "verification",
+            &["plan", "evidence", "verification"],
+            &["plan", "evidence"],
+        ),
+        Command::Report => handle_stage(
+            &project_root,
+            &mut cache,
+            "report",
+            &["plan", "evidence", "verification", "report"],
+            &["plan", "evidence", "verification"],
+        ),
         Command::Run => handle_run(&project_root, &mut cache),
         Command::Archive(path) => handle_archive(&project_root, &mut cache, &path),
         Command::File { path, schema } => handle_file(&project_root, &mut cache, &path, &schema),
@@ -55,7 +78,7 @@ fn main() {
     }
 }
 
-fn load_json(path: &PathBuf, label: &str) -> Option<Value> {
+fn load_json(path: &Path, _label: &str) -> Option<Value> {
     if !path.exists() {
         return None;
     }
@@ -63,17 +86,25 @@ fn load_json(path: &PathBuf, label: &str) -> Option<Value> {
     serde_json::from_str(&content).ok()
 }
 
-fn artifact_path(project_root: &PathBuf, stage: &str) -> PathBuf {
+fn artifact_path(project_root: &Path, stage: &str) -> PathBuf {
     match stage {
         "plan" => project_root.join("stages/01_plan/output/plan.json"),
         "evidence" => project_root.join("stages/02_research/output/evidence.json"),
         "verification" => project_root.join("stages/03_verify/output/verification.json"),
         "report" => project_root.join("stages/04_report/output/report.json"),
-        _ => project_root.join("stages").join(stage).join("output").join(format!("{}.json", stage)),
+        _ => project_root
+            .join("stages")
+            .join(stage)
+            .join("output")
+            .join(format!("{}.json", stage)),
     }
 }
 
-fn validate_artifact(cache: &mut SchemaCache, stage: &str, json: &Value) -> (Vec<String>, Vec<String>) {
+fn validate_artifact(
+    cache: &mut SchemaCache,
+    stage: &str,
+    json: &Value,
+) -> (Vec<String>, Vec<String>) {
     let schema_name = match stage {
         "plan" => "research-plan.schema.json",
         "evidence" => "evidence-bundle.schema.json",
@@ -83,15 +114,24 @@ fn validate_artifact(cache: &mut SchemaCache, stage: &str, json: &Value) -> (Vec
     };
     let mut v = Validator::new(cache.clone());
     v.validate(json, &cache.get(schema_name).unwrap().doc);
-    (v.errors().iter().map(|e| format!("{}: {}", stage, e)).collect(), v.notes().iter().cloned().collect())
+    (
+        v.errors()
+            .iter()
+            .map(|e| format!("{}: {}", stage, e))
+            .collect(),
+        v.notes().to_vec(),
+    )
 }
 
-fn handle_status(project_root: &PathBuf, cache: &mut SchemaCache) {
+fn handle_status(_project_root: &Path, _cache: &mut SchemaCache) {
     let stages = [
-        ("01 plan", artifact_path(project_root, "plan")),
-        ("02 evidence", artifact_path(project_root, "evidence")),
-        ("03 verification", artifact_path(project_root, "verification")),
-        ("04 report", artifact_path(project_root, "report")),
+        ("01 plan", artifact_path(_project_root, "plan")),
+        ("02 evidence", artifact_path(_project_root, "evidence")),
+        (
+            "03 verification",
+            artifact_path(_project_root, "verification"),
+        ),
+        ("04 report", artifact_path(_project_root, "report")),
     ];
 
     let mut produced = 0;
@@ -120,15 +160,22 @@ fn handle_status(project_root: &PathBuf, cache: &mut SchemaCache) {
     std::process::exit(0);
 }
 
-fn handle_stage(project_root: &PathBuf, cache: &mut SchemaCache, stage: &str, needed: &[&str], gate_stages: &[&str]) {
+fn handle_stage(
+    project_root: &Path,
+    cache: &mut SchemaCache,
+    stage: &str,
+    _needed: &[&str],
+    gate_stages: &[&str],
+) {
     let path = artifact_path(project_root, stage);
     let doc = match load_json(&path, stage) {
         Some(d) => d,
         None => {
-            let mut formatter = OutputFormatter::new(
+            let formatter = OutputFormatter::new(
                 vec![format!("{}: no artifact — stage 01 not run", stage)],
-                vec![]
+                vec![],
             );
+            formatter.print_stdout();
             formatter.print_stderr();
             std::process::exit(formatter.exit_code());
         }
@@ -160,13 +207,21 @@ fn handle_stage(project_root: &PathBuf, cache: &mut SchemaCache, stage: &str, ne
         let rep = load_json(&artifact_path(project_root, "report"), "report");
 
         if stage == "plan" {
-            if let Some(p) = plan.as_ref() { cc.check_plan_cross(p); }
+            if let Some(p) = plan.as_ref() {
+                cc.check_plan_cross(p);
+            }
         } else if stage == "evidence" {
-            if let (Some(p), Some(e)) = (plan.as_ref(), ev.as_ref()) { cc.check_evidence_cross(p, e); }
+            if let (Some(p), Some(e)) = (plan.as_ref(), ev.as_ref()) {
+                cc.check_evidence_cross(p, e);
+            }
         } else if stage == "verification" {
-            if let (Some(p), Some(e), Some(v)) = (plan.as_ref(), ev.as_ref(), ver.as_ref()) { cc.check_verification_cross(p, e, v); }
+            if let (Some(p), Some(e), Some(v)) = (plan.as_ref(), ev.as_ref(), ver.as_ref()) {
+                cc.check_verification_cross(p, e, v);
+            }
         } else if stage == "report" {
-            if let (Some(p), Some(e), Some(v), Some(r)) = (plan.as_ref(), ev.as_ref(), ver.as_ref(), rep.as_ref()) {
+            if let (Some(p), Some(e), Some(v), Some(r)) =
+                (plan.as_ref(), ev.as_ref(), ver.as_ref(), rep.as_ref())
+            {
                 cc.check_report_cross(p, e, v, r);
             }
             // Check report.md exists
@@ -189,7 +244,7 @@ fn handle_stage(project_root: &PathBuf, cache: &mut SchemaCache, stage: &str, ne
     std::process::exit(formatter.exit_code());
 }
 
-fn handle_run(project_root: &PathBuf, cache: &mut SchemaCache) {
+fn handle_run(project_root: &Path, cache: &mut SchemaCache) {
     let mut errors = Vec::new();
     let mut notes = Vec::new();
 
@@ -249,9 +304,16 @@ fn handle_run(project_root: &PathBuf, cache: &mut SchemaCache) {
     // Cross-checks
     if errors.is_empty() {
         let mut cc = CrossChecker::new(cache.clone());
-        if let (Some(p), Some(e)) = (plan.as_ref(), ev.as_ref()) { cc.check_plan_cross(p); cc.check_evidence_cross(p, e); }
-        if let (Some(p), Some(e), Some(v)) = (plan.as_ref(), ev.as_ref(), ver.as_ref()) { cc.check_verification_cross(p, e, v); }
-        if let (Some(p), Some(e), Some(v), Some(r)) = (plan.as_ref(), ev.as_ref(), ver.as_ref(), rep.as_ref()) {
+        if let (Some(p), Some(e)) = (plan.as_ref(), ev.as_ref()) {
+            cc.check_plan_cross(p);
+            cc.check_evidence_cross(p, e);
+        }
+        if let (Some(p), Some(e), Some(v)) = (plan.as_ref(), ev.as_ref(), ver.as_ref()) {
+            cc.check_verification_cross(p, e, v);
+        }
+        if let (Some(p), Some(e), Some(v), Some(r)) =
+            (plan.as_ref(), ev.as_ref(), ver.as_ref(), rep.as_ref())
+        {
             cc.check_report_cross(p, e, v, r);
         }
         errors.extend(cc.errors().iter().cloned());
@@ -260,10 +322,22 @@ fn handle_run(project_root: &PathBuf, cache: &mut SchemaCache) {
 
     // Print completion line first
     if errors.is_empty() {
-        let all_approved = plan.as_ref().and_then(|p| p["gate"]["approved"].as_bool()).unwrap_or(false)
-            && ev.as_ref().and_then(|e| e["gate"]["approved"].as_bool()).unwrap_or(false)
-            && ver.as_ref().and_then(|v| v["gate"]["approved"].as_bool()).unwrap_or(false)
-            && rep.as_ref().and_then(|r| r["gate"]["approved"].as_bool()).unwrap_or(false);
+        let all_approved = plan
+            .as_ref()
+            .and_then(|p| p["gate"]["approved"].as_bool())
+            .unwrap_or(false)
+            && ev
+                .as_ref()
+                .and_then(|e| e["gate"]["approved"].as_bool())
+                .unwrap_or(false)
+            && ver
+                .as_ref()
+                .and_then(|v| v["gate"]["approved"].as_bool())
+                .unwrap_or(false)
+            && rep
+                .as_ref()
+                .and_then(|r| r["gate"]["approved"].as_bool())
+                .unwrap_or(false);
         if all_approved {
             println!("RUN COMPLETE — all artifacts validate, all gates approved in order.");
         } else {
@@ -277,16 +351,16 @@ fn handle_run(project_root: &PathBuf, cache: &mut SchemaCache) {
     std::process::exit(formatter.exit_code());
 }
 
-fn handle_archive(project_root: &PathBuf, cache: &mut SchemaCache, path: &str) {
+fn handle_archive(project_root: &Path, cache: &mut SchemaCache, path: &str) {
     let archive_path = PathBuf::from(path);
     let runs_root = project_root.join("runs");
 
     // Canonicalize and check confinement
     let canonical = match canonicalize_archive_path(&archive_path, &runs_root) {
-        Ok(p) => p,
-        Err(e) => {
+        Ok((p, _)) => p,
+        Err((e, code)) => {
             eprintln!("{}", e);
-            std::process::exit(2);
+            std::process::exit(code);
         }
     };
 
@@ -295,12 +369,18 @@ fn handle_archive(project_root: &PathBuf, cache: &mut SchemaCache, path: &str) {
     // Archive prints only the verdict if no validation errors
     if exit_code == 0 {
         for note in &notes {
-            if note.starts_with("ARCHIVE VALID") || note.starts_with("Archive is structurally valid") {
+            if note.starts_with("ARCHIVE VALID")
+                || note.starts_with("Archive is structurally valid")
+            {
                 println!("{}", note);
                 break;
             }
         }
-    } else if exit_code == 1 && notes.iter().any(|n| n.starts_with("Archive is structurally valid")) {
+    } else if exit_code == 1
+        && notes
+            .iter()
+            .any(|n| n.starts_with("Archive is structurally valid"))
+    {
         for note in &notes {
             if note.starts_with("Archive is structurally valid") {
                 eprintln!("{}", note);
@@ -315,7 +395,7 @@ fn handle_archive(project_root: &PathBuf, cache: &mut SchemaCache, path: &str) {
     std::process::exit(exit_code);
 }
 
-fn handle_file(project_root: &PathBuf, cache: &mut SchemaCache, path: &str, schema_name: &str) {
+fn handle_file(_project_root: &Path, cache: &mut SchemaCache, path: &str, schema_name: &str) {
     let file_path = PathBuf::from(path);
     let mut errors = Vec::new();
     let mut notes = Vec::new();
@@ -352,7 +432,7 @@ fn handle_file(project_root: &PathBuf, cache: &mut SchemaCache, path: &str, sche
     let mut v = Validator::new(cache.clone());
     v.validate(&doc, &schema);
     errors.extend(v.errors().iter().map(|e| format!("{}: {}", path, e)));
-    notes.extend(v.notes().iter().cloned());
+    notes.extend(v.notes().to_vec());
 
     let formatter = OutputFormatter::new(errors, notes);
     formatter.print_stdout();

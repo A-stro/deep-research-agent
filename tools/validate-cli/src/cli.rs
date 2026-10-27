@@ -39,7 +39,10 @@ impl Command {
                 if args.len() < 4 {
                     Command::Unknown("file requires <path> <schema-name>".to_string())
                 } else {
-                    Command::File { path: args[2].clone(), schema: args[3].clone() }
+                    Command::File {
+                        path: args[2].clone(),
+                        schema: args[3].clone(),
+                    }
                 }
             }
             other => Command::Unknown(format!("unknown command: {}", other)),
@@ -48,8 +51,13 @@ impl Command {
 
     pub fn usage_error(&self) -> Option<(String, i32)> {
         match self {
-            Command::Unknown(msg) if msg.contains("archive requires") => Some(("usage: validate archive <runs/<run_id> directory".to_string(), 2)),
-            Command::Unknown(msg) if msg.contains("file requires") => Some(("usage: validate file <path> <schema-name>".to_string(), 2)),
+            Command::Unknown(msg) if msg.contains("archive requires") => Some((
+                "usage: validate archive <runs/<run_id> directory".to_string(),
+                2,
+            )),
+            Command::Unknown(msg) if msg.contains("file requires") => {
+                Some(("usage: validate file <path> <schema-name>".to_string(), 2))
+            }
             Command::Unknown(msg) => Some((msg.clone(), 2)),
             _ => None,
         }
