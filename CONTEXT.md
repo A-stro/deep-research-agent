@@ -4,10 +4,10 @@ The flow in one line: plan it, evidence it, audit it, report it.
 
 | Stage | Job | Input | Output | Human check |
 |---|---|---|---|---|
-| `01_plan` | decompose the query | the user's query | `output/plan.json` | questions actually answer the query; gate set |
-| `02_research` | gather the evidence | 01's approved output | `output/evidence.json` | spot-check records against the live URLs; gate set |
-| `03_verify` | audit claims independently | 02's approved output + 01's questions | `output/verification.json` | audit reasons are real, contradictions addressed; gate set |
-| `04_report` | synthesize the cited report | 03's approved output + 02's sources | `output/report.json` + `report.md` | findings survive citation-following; gate set, then archive |
+| `01_plan` | decompose the query | the user's query | `output/plan.json` (created on run) | questions actually answer the query; gate set |
+| `02_research` | gather the evidence | 01's approved output | `output/evidence.json` (created on run) | spot-check records against the live URLs; gate set |
+| `03_verify` | audit claims independently | 02's approved output + 01's questions | `output/verification.json` (created on run) | audit reasons are real, contradictions addressed; gate set |
+| `04_report` | synthesize the cited report | 03's approved output + 02's sources | `output/report.json` + `report.md` (created on run) | findings survive citation-following; gate set, then archive |
 
 Factory (stable, every run): `_shared/` — schemas, design principles, infrastructure, roadmap.
 Product (new each run): each stage's `output/`; completed runs archived to `runs/<run_id>/`.

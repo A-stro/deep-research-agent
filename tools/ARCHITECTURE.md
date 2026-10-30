@@ -52,7 +52,11 @@ plan.artifact: expected one of [ResearchPlan], got "…"
 
 **Data model:** Use `serde_json::Value` for documents throughout. No generated Rust types from schemas.
 
+**Declaration-order traversal:** `serde_json` is built with the `preserve_order` feature so object keys iterate in document (declaration) order. This is what keeps first-failure ordering, `additionalProperties` listings, and `unknown field` (property enumeration) messages byte-identical to the oracle's JS object insertion order.
+
 **Dependencies:** `serde_json`, `regex`. No `clap`, `thiserror`, `jsonschema`, async runtime, HTTP client.
+
+**Deterministic replacements (throwables in the oracle):** the oracle throws uncaught Node exceptions on several code paths, rendering stack traces whose exit codes vary by Node version. The port replaces each with a deterministic stderr line + exit: cyclic `$ref` (`maximum $ref depth exceeded`, exit 1), dangling `$ref` pointer (`bad $ref pointer: <ref>`, exit 1), and invalid `pattern` regex (`invalid schema pattern: <pattern>`, exit 1). The oracle never throws on shipped schema/fixture data, so this only changes failure modes that were already broken.
 
 ---
 
@@ -89,20 +93,21 @@ Only these five deviations are permitted. Each must have a regression test.
 | 1 | **Usage errors explicit** | Missing `file` args: accidental success/deprecation warning | Exit 2 with concise usage error: `usage: validate file <path> <schema-name>` |
 | 2 | **Schema-not-found deterministic** | Panic/stack trace | Single stderr line: `schema not found: <name>`; exit 1 |
 | 3 | **JSON parse stable prefix** | `<path>: not valid JSON (<native detail>)` | `<path>: not valid JSON`; native detail may differ |
-| 4 | **Archive paths canonicalized** | Lexical check only | `fs::canonicalize` → require path under canonical `<ROOT>/runs`; reject symlink escapes |
-| 5 | **Archive never falls back** | Missing artifact → might read live stages | Missing archive artifact = failure; never reads `stages/*/output/` |
+| 4 | **Archive paths canonicalized** | Lexical check only | `fs::canonicalize` → require resolved path under canonical `<ROOT>/runs`; reject symlink escapes. Relative paths are accepted when they canonicalize under `runs/` (the oracle's `existsSync` also resolves relatives against cwd). |
+| 5 | **Archive never falls back** | Missing artifact → might read live stages | Missing archive artifact = failure; never reads `stages/*/output/`. The stage toolchain still runs afterwards and adds `<stage>: artifact missing, chain broken` to the shared accumulator, so the failure-line count can differ from the oracle's (oracle silently skips the null doc). |
 
 **No other deviations.** If another discrepancy is found during implementation, stop and escalate to Advisor.
+
+**Supplementary explicit-error (handoff §6.5, same family as #1/#2):** the oracle's `loadJson` returns null *silently* for a missing file, so `file <missing>` prints the generic success block and exits 0. Per handoff §6.5 ("concise file-not-found failure; exit 1") the port prints `<path>: file not found` and exits 1. Locked by golden case `N12-file-missing-file`. The type-failure wording follows JS `typeof` exactly (numbers render `number` unless the expected type is `integer`, and `typeof null` is `"object"`), so those messages are parity, not deviation.
 
 ---
 
 ## 5. Archive Canonicalization
 
-- Resolve the provided archive path with `std::fs::canonicalize` (follows symlinks).
+- Resolve the provided archive path with `std::fs::canonicalize` (follows symlinks; a relative argument is resolved against the current directory, so relative `runs/<id>` paths are accepted when they land under the canonical runs dir).
 - Resolve the project root's `runs` directory with `canonicalize`.
 - Require the archive path to start with the canonical `runs` path + path separator.
-- Reject if canonicalization fails, if path escapes, or if the archive folder name does not match `^YYYY-MM-DD-[a-z0-9-]+$`.
-- This check happens **before** existence checks (matches oracle order: usage → path policy → existence → validation).
+- Reject if canonicalization fails, if path escapes, or if the archive path sits outside `runs`; symlinked escapes are rejected the same way. Policy failures exit 2 **before** existence checks (oracle order: usage → path policy → existence → validation).
 
 **Error messages (from oracle):**
 - Missing arg: `usage: node tools/validate.mjs archive <runs/<run_id> directory>` → Rust: `usage: validate archive <runs/<run_id> directory>` (exit 2)
@@ -254,6 +259,13 @@ Before deleting Node oracle:
 
 **Negative/Edge (minimum 28 cases):** See handoff brief §6.5 for full list. Each asserts exact exit code, stdout, stderr, and message ordering.
 
+### 8.5 Golden Phase — Completion Record (2026-10-30)
+
+- **Differential matrices (live):** run A — 44 cases: 37 identical + 7 sanctioned (each fingerprint maps to a §4 deviation); run B + corrupt/md/symlink edges — 23 identical + 1 sanctioned symlink escape. One real divergence found and fixed during generation: the `type`-failure wording now reproduces JS `typeof` (numbers render `number` unless the expected type is `integer`; `typeof null` is `object`) while acceptance stays normal JSON semantics.
+- **Goldens:** 14 positive cases at `tools/validate-cli/tests/fixtures/<run_id>/<cmd>.{stdout,stderr,exit}`; 27 negative/edge cases in `tools/validate-cli/tests/neg_expectations.rs` (inline literals), including every sanctioned fingerprint. Both sides normalize the canonical fixture root to `<ROOT>`.
+- **Node-free proof:** `cargo test` passes with `node` absent from `PATH`; the suite runs only the freshly built `validate` binary against committed fixtures plus inline expectations. 41 assertions in `tools/validate-cli/tests/parity.rs` + 9 core unit tests.
+- **Regeneration:** while the oracle existed, `tools/validate-cli/tests/generate-goldens.zsh` ran both binaries per case and recorded the Rust output; sanctioned cases are listed in its SANCTIONS map. The oracle is deleted after goldening; recover `tools/oracle/validate.mjs` from git history if goldens ever need regenerating.
+
 ---
 
 ## 9. Repository Layout
@@ -270,18 +282,24 @@ tools/
 │       ├── schemas.rs      # load + resolve $ref within _shared/schemas/
 │       ├── validate.rs     # subset validator (type, enum, pattern, etc.)
 │       ├── cross_check.rs  # 4 cross-check fns + checkGatesInOrder
-│       └── archive.rs      # validateArchive logic
+│       ├── session.rs      # orchestration: command flows, shared
+│       │                   # errors/notes accumulators, stage doc re-reads
+│       └── archive.rs      # archive path policy + member validation
 ├── validate-cli/
 │   ├── Cargo.toml
 │   ├── src/
-│   │   ├── main.rs         # manual arg parsing, subcommands, exit codes
-│   │   ├── cli.rs          # command definitions, project root discovery
-│   │   └── output.rs       # ok/FAIL formatting, accumulator
-│   └── tests/
-│       ├── parity.rs       # integration tests
-│       └── fixtures/       # golden expectations
+│   │   ├── main.rs         # dispatch + exit codes
+│   │   ├── cli.rs          # Command parse, project root discovery
+│   │   └── output.rs       # block rendering (ok/FAIL prefixes, counts)
+│   ├── tests/
+│   │   ├── parity.rs       # integration tests (node-free)
+│   │   ├── neg_expectations.rs  # generated negative expectations
+│   │   ├── generate-goldens.zsh # golden generator (needs oracle from git history)
+│   │   └── fixtures/       # positive goldens
 └── target/release/validate  # binary name: validate
 ```
+
+Deviation from the pre-implementation listing: orchestration lives in its own `session.rs` inside `validate-core` (shared accumulators and stage re-reads are core behavior used by both the live stage toolchain and archive mode), while `output.rs` stays in `validate-cli` and `main.rs` shrank to dispatch + exit codes. The functional contract of this section is unchanged.
 
 **Cargo workspace config:**
 

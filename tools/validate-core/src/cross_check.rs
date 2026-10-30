@@ -1,391 +1,375 @@
-//! Cross-artifact checks and gate ordering.
+//! Cross-artifact checks, gate-chain walking, and JS value-display
+//! helpers. All check functions mutate the command's shared errors/notes
+//! accumulators directly — the oracle uses single arrays per command and
+//! its success-note rule (`errors.length === before`) is global, so these
+//! functions receive the same vectors the stage code uses.
 
-use crate::schemas::SchemaCache;
 use serde_json::Value;
 use std::collections::HashSet;
 
-pub struct CrossChecker {
-    errors: Vec<String>,
-    notes: Vec<String>,
+/// JS truthiness — used for `gate.approved`-style fields, where a
+/// malformed truthy string ("yes") counts as approved exactly like `!!v`
+/// does in the oracle.
+pub fn truthy(v: &Value) -> bool {
+    match v {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64().map(|f| f != 0.0).unwrap_or(true),
+        Value::String(s) => !s.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
 }
 
-impl CrossChecker {
-    pub fn new(_cache: SchemaCache) -> Self {
-        Self {
-            errors: Vec::new(),
-            notes: Vec::new(),
-        }
-    }
-
-    pub fn errors(&self) -> &[String] {
-        &self.errors
-    }
-    pub fn notes(&self) -> &[String] {
-        &self.notes
-    }
-    pub fn has_errors(&self) -> bool {
-        !self.errors.is_empty()
-    }
-    pub fn take(self) -> (Vec<String>, Vec<String>) {
-        (self.errors, self.notes)
-    }
-
-    fn add_error(&mut self, msg: &str) {
-        self.errors.push(msg.to_string());
-    }
-    fn add_note(&mut self, msg: &str) {
-        self.notes.push(msg.to_string());
-    }
-
-    fn note_if_no_errors(&mut self, msg: &str) {
-        if self.errors.is_empty() {
-            self.add_note(msg);
-        }
-    }
-
-    /// Check that two artifacts have matching run_id
-    fn check_run_id_match(&mut self, a: &Value, b: &Value, a_name: &str, b_name: &str) {
-        let a_id = a["run_id"].as_str().unwrap_or("");
-        let b_id = b["run_id"].as_str().unwrap_or("");
-        if a_id != b_id && !a_id.is_empty() && !b_id.is_empty() {
-            self.add_error(&format!(
-                "{}: run_id mismatch with {} (\"{}\" vs \"{}\")",
-                a_name, b_name, a_id, b_id
-            ));
-        }
-    }
-
-    pub fn check_plan_cross(&mut self, plan: &Value) {
-        let rq_ids: HashSet<_> = plan["research_questions"]
-            .as_array()
-            .map(|arr| arr.iter().filter_map(|q| q["id"].as_str()).collect())
-            .unwrap_or_default();
-        if rq_ids.len()
-            != plan["research_questions"]
-                .as_array()
-                .map(|a| a.len())
-                .unwrap_or(0)
-        {
-            self.add_error("plan: duplicate research question ids");
-        }
-        for s in plan["search_strategy"].as_array().unwrap_or(&vec![]) {
-            if let Some(qid) = s["question_id"].as_str() {
-                if !rq_ids.contains(qid) {
-                    self.add_error(&format!(
-                        "plan: search_strategy references unknown question {}",
-                        qid
-                    ));
-                }
-            }
-        }
-        let covered: HashSet<_> = plan["search_strategy"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|s| s["question_id"].as_str())
-                    .collect()
+/// JS template-literal stringification for values interpolated into
+/// messages: strings go bare, `undefined` for missing members.
+pub fn js_value(v: Option<&Value>) -> String {
+    match v {
+        None => "undefined".to_string(),
+        Some(Value::Null) => "null".to_string(),
+        Some(Value::Bool(b)) => b.to_string(),
+        Some(Value::Number(n)) => match n.as_f64() {
+            Some(f) => format!("{}", f),
+            None => n.to_string(),
+        },
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Array(a)) => a
+            .iter()
+            .map(|item| match item {
+                Value::Null => String::new(),
+                other => js_value(Some(other)),
             })
-            .unwrap_or_default();
-        for id in &rq_ids {
-            if !covered.contains(id) {
-                self.add_error(&format!("plan: question {} has no search strategy", id));
+            .collect::<Vec<_>>()
+            .join(","),
+        Some(Value::Object(_)) => "[object Object]".to_string(),
+    }
+}
+
+/// `v[key]` as a slice without allocating: missing or non-array → empty.
+fn array_of<'a>(v: &'a Value, key: &str) -> &'a [Value] {
+    v.get(key)
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or(&[])
+}
+
+fn str_of<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
+    v.get(key).and_then(Value::as_str)
+}
+
+/// ADR §6.1 `checkPlanCross`.
+pub fn check_plan_cross(errors: &mut Vec<String>, notes: &mut Vec<String>, plan: &Value) {
+    let before = errors.len();
+    let rqs = array_of(plan, "research_questions");
+    let rq_ids: HashSet<&str> = rqs.iter().filter_map(|q| str_of(q, "id")).collect();
+    if rq_ids.len() != rqs.len() {
+        errors.push("plan: duplicate research question ids".to_string());
+    }
+    for s in array_of(plan, "search_strategy") {
+        if let Some(qid) = str_of(s, "question_id") {
+            if !rq_ids.contains(qid) {
+                errors.push(format!(
+                    "plan: search_strategy references unknown question {}",
+                    qid
+                ));
             }
         }
-        self.note_if_no_errors(&format!(
+    }
+    let covered: HashSet<&str> = array_of(plan, "search_strategy")
+        .iter()
+        .filter_map(|s| str_of(s, "question_id"))
+        .collect();
+    for id in &rq_ids {
+        if !covered.contains(id) {
+            errors.push(format!("plan: question {} has no search strategy", id));
+        }
+    }
+    if errors.len() == before {
+        notes.push(format!(
             "plan: {} question(s), all covered by search strategy",
             rq_ids.len()
         ));
     }
+}
 
-    pub fn check_evidence_cross(&mut self, plan: &Value, ev: &Value) {
-        // Check run_id match
-        self.check_run_id_match(ev, plan, "evidence", "plan");
+/// ADR §6.2 `checkEvidenceCross`. (The run_id check lives in the stage
+/// function, as in the oracle — not here.)
+pub fn check_evidence_cross(
+    errors: &mut Vec<String>,
+    notes: &mut Vec<String>,
+    plan: &Value,
+    ev: &Value,
+) {
+    let before = errors.len();
+    let rq_ids: HashSet<&str> = array_of(plan, "research_questions")
+        .iter()
+        .filter_map(|q| str_of(q, "id"))
+        .collect();
+    let mut evidence_ids = HashSet::new();
+    for r in array_of(ev, "records") {
+        let question_str = str_of(r, "question_id");
+        let unknown = match question_str {
+            Some(qid) => !rq_ids.contains(qid),
+            None => true,
+        };
+        if unknown {
+            errors.push(format!(
+                "evidence: record {} references unknown question {}",
+                js_value(r.get("evidence_id")),
+                js_value(r.get("question_id"))
+            ));
+        }
+        if let Some(eid) = str_of(r, "evidence_id") {
+            if !evidence_ids.insert(eid) {
+                errors.push(format!("evidence: duplicate evidence id {}", eid));
+            }
+        }
+    }
+    let gap_qs: HashSet<&str> = array_of(ev, "gaps")
+        .iter()
+        .filter_map(|g| str_of(g, "question_id"))
+        .collect();
+    for id in &rq_ids {
+        let has_records = array_of(ev, "records")
+            .iter()
+            .any(|r| str_of(r, "question_id") == Some(*id));
+        if !has_records && !gap_qs.contains(id) {
+            errors.push(format!(
+                "evidence: question {} has neither evidence nor a recorded gap",
+                id
+            ));
+        }
+    }
+    if errors.len() == before {
+        notes.push(format!(
+            "evidence: {} record(s), {} gap(s), every question accounted for",
+            array_of(ev, "records").len(),
+            array_of(ev, "gaps").len()
+        ));
+    }
+}
 
-        let rq_ids: HashSet<_> = plan["research_questions"]
-            .as_array()
-            .map(|arr| arr.iter().filter_map(|q| q["id"].as_str()).collect())
-            .unwrap_or_default();
-        let mut ev_ids = HashSet::new();
-        for r in ev["records"].as_array().unwrap_or(&vec![]) {
-            if let Some(qid) = r["question_id"].as_str() {
-                if !rq_ids.contains(qid) {
-                    self.add_error(&format!(
-                        "evidence: record {} references unknown question {}",
-                        r["evidence_id"].as_str().unwrap_or("?"),
-                        qid
+/// ADR §6.3 `checkVerificationCross`. `plan` is the already-loaded plan
+/// (may be absent); the oracle re-reads it mid-check only in states that
+/// also suppress this whole check.
+pub fn check_verification_cross(
+    errors: &mut Vec<String>,
+    notes: &mut Vec<String>,
+    plan: Option<&Value>,
+    ev: &Value,
+    ver: &Value,
+) {
+    let before = errors.len();
+    let evidence_ids: HashSet<&str> = array_of(ev, "records")
+        .iter()
+        .filter_map(|r| str_of(r, "evidence_id"))
+        .collect();
+    let mut result_ids = HashSet::new();
+    for r in array_of(ver, "results") {
+        if let Some(vid) = str_of(r, "result_id") {
+            if !result_ids.insert(vid) {
+                errors.push(format!("verification: duplicate result id {}", vid));
+            }
+        }
+        for eid in array_of(r, "evidence_ids") {
+            if let Some(eid_str) = eid.as_str() {
+                if !evidence_ids.contains(eid_str) {
+                    errors.push(format!(
+                        "verification: result {} references unknown evidence {}",
+                        js_value(r.get("result_id")),
+                        eid_str
                     ));
                 }
             }
-            if let Some(eid) = r["evidence_id"].as_str() {
-                if !ev_ids.insert(eid) {
-                    self.add_error(&format!("evidence: duplicate evidence id {}", eid));
-                }
-            }
         }
-        let gap_qs: HashSet<_> = ev["gaps"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|g| g["question_id"].as_str())
-                    .collect()
-            })
-            .unwrap_or_default();
-        for id in &rq_ids {
-            let has_evidence = ev["records"]
-                .as_array()
-                .map(|arr| arr.iter().any(|r| r["question_id"].as_str() == Some(*id)))
-                .unwrap_or(false);
-            if !has_evidence && !gap_qs.contains(id) {
-                self.add_error(&format!(
-                    "evidence: question {} has neither evidence nor a recorded gap",
-                    id
+    }
+    // Contradicting evidence that no result adjudicates.
+    for r in array_of(ev, "records") {
+        if str_of(r, "support_relation") == Some("contradicts") {
+            let eid = str_of(r, "evidence_id").unwrap_or("");
+            let adjudicated = array_of(ver, "results").iter().any(|v| {
+                array_of(v, "evidence_ids")
+                    .iter()
+                    .any(|e| e.as_str() == Some(eid))
+            });
+            if !adjudicated {
+                errors.push(format!(
+                    "verification: contradicting evidence {} is never adjudicated in a result",
+                    eid
                 ));
             }
         }
-        self.note_if_no_errors(&format!(
-            "evidence: {} record(s), {} gap(s), every question accounted for",
-            ev["records"].as_array().map(|a| a.len()).unwrap_or(0),
-            ev["gaps"].as_array().map(|a| a.len()).unwrap_or(0)
-        ));
     }
-
-    pub fn check_verification_cross(&mut self, plan: &Value, ev: &Value, ver: &Value) {
-        // Check run_id match
-        self.check_run_id_match(ver, plan, "verification", "plan");
-        self.check_run_id_match(ver, ev, "verification", "evidence");
-
-        let ev_ids: HashSet<_> = ev["records"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|r| r["evidence_id"].as_str())
-                    .collect()
-            })
-            .unwrap_or_default();
-        let mut v_ids = HashSet::new();
-        for r in ver["results"].as_array().unwrap_or(&vec![]) {
-            if let Some(vid) = r["result_id"].as_str() {
-                if !v_ids.insert(vid) {
-                    self.add_error(&format!("verification: duplicate result id {}", vid));
-                }
-            }
-            for eid in r["evidence_ids"].as_array().unwrap_or(&vec![]) {
-                if let Some(eid_str) = eid.as_str() {
-                    if !ev_ids.contains(eid_str) {
-                        self.add_error(&format!(
-                            "verification: result {} references unknown evidence {}",
-                            r["result_id"].as_str().unwrap_or("?"),
-                            eid_str
-                        ));
-                    }
-                }
-            }
-        }
-        // Unadjudicated contradicting evidence
-        for r in ev["records"].as_array().unwrap_or(&vec![]) {
-            if r["support_relation"].as_str() == Some("contradicts") {
-                let eid = r["evidence_id"].as_str().unwrap_or("");
-                let adjudicated = ver["results"]
-                    .as_array()
-                    .map(|arr| {
-                        arr.iter().any(|v| {
-                            v["evidence_ids"]
-                                .as_array()
-                                .map(|eids| eids.iter().any(|e| e.as_str() == Some(eid)))
-                                .unwrap_or(false)
-                        })
-                    })
-                    .unwrap_or(false);
-                if !adjudicated {
-                    self.add_error(&format!(
-                        "verification: contradicting evidence {} is never adjudicated in a result",
-                        eid
-                    ));
-                }
-            }
-        }
-        // Every plan question covered
-        let mut covered_qs = HashSet::new();
-        let empty_vec = vec![];
-        let records = ev["records"].as_array().unwrap_or(&empty_vec);
-        for v in ver["results"].as_array().unwrap_or(&vec![]) {
-            for eid in v["evidence_ids"].as_array().unwrap_or(&vec![]) {
-                if let Some(eid_str) = eid.as_str() {
-                    if let Some(qid) = records
-                        .iter()
-                        .find(|r| r["evidence_id"].as_str() == Some(eid_str))
-                        .and_then(|r| r["question_id"].as_str())
-                    {
-                        covered_qs.insert(qid);
-                    }
-                }
-            }
-        }
-        for q in plan["research_questions"].as_array().unwrap_or(&vec![]) {
-            if let Some(qid) = q["id"].as_str() {
-                if !covered_qs.contains(qid) {
-                    self.add_error(&format!(
+    // Question coverage through cited evidence.
+    let covered: HashSet<&str> = array_of(ver, "results")
+        .iter()
+        .flat_map(|v| array_of(v, "evidence_ids").iter())
+        .filter_map(|eid| {
+            let eid_str = eid.as_str()?;
+            array_of(ev, "records")
+                .iter()
+                .find(|r| str_of(r, "evidence_id") == Some(eid_str))
+                .and_then(|r| str_of(r, "question_id"))
+        })
+        .collect();
+    if let Some(plan) = plan {
+        for q in array_of(plan, "research_questions") {
+            if let Some(qid) = str_of(q, "id") {
+                if !covered.contains(qid) {
+                    errors.push(format!(
                         "verification: question {} has no verification result",
                         qid
                     ));
                 }
             }
         }
-        self.note_if_no_errors(&format!(
+    }
+    if errors.len() == before {
+        notes.push(format!(
             "verification: {} result(s), contradictions adjudicated, every question verified",
-            ver["results"].as_array().map(|a| a.len()).unwrap_or(0)
+            array_of(ver, "results").len()
         ));
     }
+}
 
-    pub fn check_report_cross(&mut self, plan: &Value, ev: &Value, ver: &Value, rep: &Value) {
-        // Check run_id match
-        self.check_run_id_match(rep, plan, "report", "plan");
-        self.check_run_id_match(rep, ev, "report", "evidence");
-        self.check_run_id_match(rep, ver, "report", "verification");
-
-        let ev_ids: HashSet<_> = ev["records"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|r| r["evidence_id"].as_str())
-                    .collect()
-            })
-            .unwrap_or_default();
-        let rq_ids: HashSet<_> = plan["research_questions"]
-            .as_array()
-            .map(|arr| arr.iter().filter_map(|q| q["id"].as_str()).collect())
-            .unwrap_or_default();
-
-        for (i, f) in rep["key_findings"]
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .enumerate()
-        {
-            for eid in f["evidence_ids"].as_array().unwrap_or(&vec![]) {
-                if let Some(eid_str) = eid.as_str() {
-                    if !ev_ids.contains(eid_str) {
-                        self.add_error(&format!(
-                            "report: key_findings[{}] cites unknown evidence {}",
-                            i, eid_str
-                        ));
-                    }
+/// ADR §6.4 `checkReportCross`. (The run_id check lives in the stage
+/// function — report is compared against plan only.)
+pub fn check_report_cross(
+    errors: &mut Vec<String>,
+    notes: &mut Vec<String>,
+    plan: &Value,
+    ev: &Value,
+    ver: &Value,
+    rep: &Value,
+) {
+    let before = errors.len();
+    let evidence_ids: HashSet<&str> = array_of(ev, "records")
+        .iter()
+        .filter_map(|r| str_of(r, "evidence_id"))
+        .collect();
+    let cite = |ids: &[Value], at: &str, out: &mut Vec<String>| {
+        for eid in ids {
+            if let Some(eid_str) = eid.as_str() {
+                if !evidence_ids.contains(eid_str) {
+                    out.push(format!("report: {} cites unknown evidence {}", at, eid_str));
                 }
             }
         }
-        for (i, c) in rep["conflicts"]
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .enumerate()
-        {
-            for eid in c["evidence_ids"].as_array().unwrap_or(&vec![]) {
-                if let Some(eid_str) = eid.as_str() {
-                    if !ev_ids.contains(eid_str) {
-                        self.add_error(&format!(
-                            "report: conflicts[{}] cites unknown evidence {}",
-                            i, eid_str
-                        ));
-                    }
-                }
-            }
-        }
-        for (i, s) in rep["sources"]
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .enumerate()
-        {
-            for eid in s["evidence_ids"].as_array().unwrap_or(&vec![]) {
-                if let Some(eid_str) = eid.as_str() {
-                    if !ev_ids.contains(eid_str) {
-                        self.add_error(&format!(
-                            "report: sources[{}] cites unknown evidence {}",
-                            i, eid_str
-                        ));
-                    }
-                }
-            }
-        }
-        let analyzed: HashSet<_> = rep["detailed_analysis"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|d| d["question_id"].as_str())
-                    .collect()
-            })
-            .unwrap_or_default();
-        for id in &rq_ids {
-            if !analyzed.contains(id) {
-                self.add_error(&format!(
-                    "report: question {} has no detailed_analysis section",
-                    id
-                ));
-            }
-        }
-        let verified: HashSet<_> = ver["results"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter(|r| {
-                        r["status"].as_str() == Some("verified")
-                            || r["status"].as_str() == Some("partially_supported")
-                    })
-                    .filter_map(|r| r["result_id"].as_str())
-                    .collect()
-            })
-            .unwrap_or_default();
-        self.note_if_no_errors(&format!("report: {} finding(s), {} verified/partial result(s) behind the chain, all questions analyzed", 
-            rep["key_findings"].as_array().map(|a| a.len()).unwrap_or(0),
-            verified.len()));
+    };
+
+    for (i, f) in array_of(rep, "key_findings").iter().enumerate() {
+        cite(
+            array_of(f, "evidence_ids"),
+            &format!("key_findings[{}]", i),
+            errors,
+        );
+    }
+    for (i, c) in array_of(rep, "conflicts").iter().enumerate() {
+        cite(
+            array_of(c, "evidence_ids"),
+            &format!("conflicts[{}]", i),
+            errors,
+        );
+    }
+    for (i, s) in array_of(rep, "sources").iter().enumerate() {
+        cite(
+            array_of(s, "evidence_ids"),
+            &format!("sources[{}]", i),
+            errors,
+        );
     }
 
-    pub fn check_gates_in_order<F>(&mut self, needed: &[&str], mut loaders: F)
-    where
-        F: FnMut(&str) -> Option<Value>,
-    {
-        let mut prev_approved = true;
-        let mut pending = Vec::new();
-        for stage in needed {
-            let doc = loaders(stage);
-            if doc.is_none() {
-                self.add_error(&format!("{}: artifact missing, chain broken", stage));
-                break;
-            }
-            let gate = doc.as_ref().map(|v| v["gate"].clone());
-            if gate.as_ref().map(|g| g.is_null()).unwrap_or(true) {
-                self.add_error(&format!("{}: artifact missing, chain broken", stage));
-                break;
-            }
-            if !prev_approved {
-                self.add_error(&format!(
-                    "{}: previous stage's gate was never approved — this stage may not start",
-                    stage
-                ));
-                break;
-            }
-            let approved = gate
-                .as_ref()
-                .and_then(|g| g["approved"].as_bool())
-                .unwrap_or(false);
-            prev_approved = approved;
-            if !approved {
-                pending.push(*stage);
-            }
-        }
-        if self.errors.is_empty() {
-            if pending.is_empty() {
-                self.add_note(&format!(
-                    "gate chain: {} approved in order",
-                    needed.join(" → ")
-                ));
-            } else {
-                self.add_note(&format!(
-                    "gate chain: valid through {}; awaiting human gate approval on: {}",
-                    needed.join(" → "),
-                    pending.join(", ")
+    let analyzed: HashSet<&str> = array_of(rep, "detailed_analysis")
+        .iter()
+        .filter_map(|d| str_of(d, "question_id"))
+        .collect();
+    for q in array_of(plan, "research_questions") {
+        if let Some(qid) = str_of(q, "id") {
+            if !analyzed.contains(qid) {
+                errors.push(format!(
+                    "report: question {} has no detailed_analysis section",
+                    qid
                 ));
             }
         }
+    }
+    let verified: HashSet<&str> = array_of(ver, "results")
+        .iter()
+        .filter(|r| {
+            str_of(r, "status") == Some("verified")
+                || str_of(r, "status") == Some("partially_supported")
+        })
+        .filter_map(|r| str_of(r, "result_id"))
+        .collect();
+    if errors.len() == before {
+        notes.push(format!(
+            "report: {} finding(s), {} verified/partial result(s) behind the chain, all questions analyzed",
+            array_of(rep, "key_findings").len(),
+            verified.len()
+        ));
+    }
+}
+
+/// Docs needed by `checkGatesInOrder`. The oracle loads all four gates
+/// (in plan → evidence → verification → report order) whenever it runs,
+/// so the caller builds this with the same loads for identical parse-error
+/// side effects.
+pub struct GateDocs {
+    pub plan: Option<Value>,
+    pub evidence: Option<Value>,
+    pub verification: Option<Value>,
+    pub report: Option<Value>,
+}
+
+impl GateDocs {
+    fn stage(&self, stage: &str) -> Option<&Value> {
+        match stage {
+            "plan" => self.plan.as_ref(),
+            "evidence" => self.evidence.as_ref(),
+            "verification" => self.verification.as_ref(),
+            _ => self.report.as_ref(),
+        }
+    }
+}
+
+/// ADR §6.5 `checkGatesInOrder`.
+pub fn check_gates_in_order(
+    errors: &mut Vec<String>,
+    notes: &mut Vec<String>,
+    needed: &[&str],
+    docs: &GateDocs,
+) {
+    let mut prev_approved = true;
+    let mut pending: Vec<&str> = Vec::new();
+    for &stage in needed {
+        let gate = docs.stage(stage).and_then(|doc| doc.get("gate"));
+        let Some(gate) = gate else {
+            errors.push(format!("{}: artifact missing, chain broken", stage));
+            break;
+        };
+        if !prev_approved {
+            errors.push(format!(
+                "{}: previous stage's gate was never approved — this stage may not start",
+                stage
+            ));
+            break;
+        }
+        let approved = gate.get("approved").map(truthy).unwrap_or(false);
+        prev_approved = approved;
+        if !approved {
+            pending.push(stage);
+        }
+    }
+    if errors.is_empty() && pending.is_empty() {
+        notes.push(format!(
+            "gate chain: {} approved in order",
+            needed.join(" → ")
+        ));
+    }
+    if errors.is_empty() && !pending.is_empty() {
+        notes.push(format!(
+            "gate chain: valid through {}; awaiting human gate approval on: {}",
+            needed.join(" → "),
+            pending.join(", ")
+        ));
     }
 }

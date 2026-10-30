@@ -3,4 +3,5 @@
 pub mod archive;
 pub mod cross_check;
 pub mod schemas;
+pub mod session;
 pub mod validate;

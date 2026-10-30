@@ -36,22 +36,3 @@ impl OutputFormatter {
         }
     }
 }
-
-pub fn print_status(stages: &[(String, String)]) {
-    for (label, state) in stages {
-        println!("{}: {}", label, state);
-    }
-}
-
-pub fn print_run_state(produced: usize, pending_gates: &[String]) {
-    if produced == 4 && pending_gates.is_empty() {
-        println!("Run state: chain complete — archive via _templates/run → runs/");
-    } else if produced == 4 {
-        println!(
-            "Run state: all artifacts produced; gate pending on {} — approve before archiving.",
-            pending_gates.join(", ")
-        );
-    } else {
-        println!("Run state: in progress ({}/4 artifacts)", produced);
-    }
-}

@@ -64,22 +64,38 @@ impl Command {
     }
 }
 
+/// ADR §1: project root discovery. `DRA_ROOT` wins when it contains both
+/// `_shared/schemas/` and `stages/`; otherwise walk up from the (escaped)
+/// current directory. The result is canonicalized so archive confinement
+/// and schema-dir containment share one root. Failure is one concise
+/// stderr line, exit 1.
 pub fn find_project_root() -> Result<PathBuf, String> {
-    if let Ok(dra_root) = env::var("DRA_ROOT") {
+    let root = if let Ok(dra_root) = env::var("DRA_ROOT") {
         let p = PathBuf::from(&dra_root);
         if p.join("_shared/schemas").exists() && p.join("stages").exists() {
-            return Ok(p);
+            p
+        } else {
+            return Err(
+                "project root not found: run from the repository root or set DRA_ROOT".to_string(),
+            );
         }
-        return Err(format!("DRA_ROOT set but invalid: {}", p.display()));
-    }
-
-    let cwd = env::current_dir().map_err(|e| format!("failed to get cwd: {}", e))?;
-    let mut current = Some(cwd.as_path());
-    while let Some(dir) = current {
-        if dir.join("_shared/schemas").exists() && dir.join("stages").exists() {
-            return Ok(dir.to_path_buf());
+    } else {
+        let cwd = env::current_dir()
+            .map_err(|_| "project root not found: run from the repository root or set DRA_ROOT")?;
+        let mut current: Option<&std::path::Path> = Some(cwd.as_path());
+        while let Some(dir) = current {
+            if dir.join("_shared/schemas").exists() && dir.join("stages").exists() {
+                break;
+            }
+            current = dir.parent();
         }
-        current = dir.parent();
-    }
-    Err("project root not found: run from the repository root or set DRA_ROOT".to_string())
+        current
+            .ok_or_else(|| {
+                "project root not found: run from the repository root or set DRA_ROOT".to_string()
+            })?
+            .to_path_buf()
+    };
+    std::fs::canonicalize(&root).map_err(|_| {
+        "project root not found: run from the repository root or set DRA_ROOT".to_string()
+    })
 }
