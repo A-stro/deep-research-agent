@@ -1,0 +1,2 @@
+  ok    plan: 5 question(s), all covered by search strategy
+All deterministic checks passed. Schema validity ≠ source truth — the evidence-auditor and human gates still own that.
