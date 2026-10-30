@@ -262,9 +262,9 @@ Before deleting Node oracle:
 ### 8.5 Golden Phase — Completion Record (2026-10-30)
 
 - **Differential matrices (live):** run A — 44 cases: 37 identical + 7 sanctioned (each fingerprint maps to a §4 deviation); run B + corrupt/md/symlink edges — 23 identical + 1 sanctioned symlink escape. One real divergence found and fixed during generation: the `type`-failure wording now reproduces JS `typeof` (numbers render `number` unless the expected type is `integer`; `typeof null` is `object`) while acceptance stays normal JSON semantics.
-- **Goldens:** 14 positive cases at `tools/validate-cli/tests/fixtures/<run_id>/<cmd>.{stdout,stderr,exit}`; 27 negative/edge cases in `tools/validate-cli/tests/neg_expectations.rs` (inline literals), including every sanctioned fingerprint. Both sides normalize the canonical fixture root to `<ROOT>`.
-- **Node-free proof:** `cargo test` passes with `node` absent from `PATH`; the suite runs only the freshly built `validate` binary against committed fixtures plus inline expectations. 41 assertions in `tools/validate-cli/tests/parity.rs` + 9 core unit tests.
-- **Regeneration:** while the oracle existed, `tools/validate-cli/tests/generate-goldens.zsh` ran both binaries per case and recorded the Rust output; sanctioned cases are listed in its SANCTIONS map. The oracle is deleted after goldening; recover `tools/oracle/validate.mjs` from git history if goldens ever need regenerating.
+- **Goldens:** 14 positive cases at `tools/validate-cli/tests/fixtures/<run_id>/<cmd>.{stdout,stderr,exit}`; 29 negative/edge cases in `tools/validate-cli/tests/neg_expectations.rs` (inline literals), including every sanctioned fingerprint and the handoff §6.5 minimum matrix. Both sides normalize the canonical fixture root to `<ROOT>`.
+- **Node-free proof:** `cargo test` passes with `node` absent from `PATH`; the suite runs only the freshly built `validate` binary against committed fixtures plus inline expectations. 43 parity assertions in `tools/validate-cli/tests/parity.rs` + 9 core unit tests.
+- **Regeneration:** while the oracle existed, `tools/validate-cli/tests/generate-goldens.zsh` ran both binaries per case and recorded the Rust output; sanctioned cases are listed in its SANCTIONS map. Positive goldens and negative expectations regenerate **only with the oracle present** — the RUST output is the expectation, and identity-vs-oracle is re-proven per unsanctioned case at generation time. The oracle is deleted after goldening; recover `tools/oracle/validate.mjs` from git history if goldens ever need regenerating.
 
 ---
 
