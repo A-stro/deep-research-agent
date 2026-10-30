@@ -241,14 +241,14 @@ neg() { # $1=name $2=setup $3..=args
   printf '%s' "$setup" > "$SCR/setup.tmp"
   local hs=$(delim "$SCR/setup.tmp")
   local pad=$(printf '#%.0s' $(seq 1 $hs))
-  local args_lit=""
-  local a
-  for a in "${(@)@}"; do args_lit+="$(printf '"%s", ' "${a//$ROOT/<ROOT>}")"; done
+  local items="" a
+  for a in "${(@)@}"; do items+="$(printf '"%s", ' "${a//$ROOT/<ROOT>}")"; done
+  items=${items%, }
   {
     printf '    NegCase {\n'
     printf '        name: "%s",\n' "$name"
     printf '        setup: r%s"%s%s\n' "$pad" "$setup" "\"$pad,"
-    printf '        args: &[%s],\n' "$args_lit"
+    printf '        args: &[%s],\n' "$items"
     printf '        exit: %s,\n' "$(cat "$SCR/$name.r.code")"
     emit_file "$SCR/$name.r.out" stdout
     emit_file "$SCR/$name.r.err" stderr
