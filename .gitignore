@@ -1,4 +1,6 @@
 .DS_Store
+tools/target/
+
 .pi/
 _shared/query-types.md
 tools/target/
