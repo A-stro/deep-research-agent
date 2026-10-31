@@ -1,0 +1,3 @@
+  ok    gate chain: plan → evidence approved in order
+  ok    verification: 18 result(s), contradictions adjudicated, every question verified
+All deterministic checks passed. Schema validity ≠ source truth — the evidence-auditor and human gates still own that.

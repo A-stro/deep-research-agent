@@ -21,7 +21,7 @@ pi 1.4.0 (installed) satisfies every package requirement: pi-subagents 0.80.0+ n
 - **Stage 02** — `researcher` role or direct `pi-web-access` tools (`web_search` multi-angle, `fetch_content` to open pages).
 - **Stage 03** — `evidence-auditor` role (background child; ambient web tools load there, not in foreground children): `source_check` for disputed/surprising claims, `fetch_content` to open cited pages, `get_search_content` for bounded slices. On pi-web-access ≥0.30.0, `source_check` returns retrieved passages for manual adjudication and does not infer support/contradiction — the stage-03 contract assumes exactly these manual-review semantics.
 - **Single-agent runs are first-class.** A run must be executable without any subagent: stage 02 works directly on the web tools, and stage 03's audit is a distinct fresh pass that starts from the evidence records and claim text, never the researcher's reasoning (per `stages/03_verify/references/verification-rules.md`). The `pi-subagents` role mapping is an optimization for larger runs, not a dependency.
-- **`tools/validate.mjs`** — project-owned deterministic boundary; independent of all packages (zero-dependency Node).
+- **`tools/validate`** (Rust binary) — project-owned deterministic boundary; independent of all packages (modular Rust, zero runtime deps).
 - **Not used by the core pipeline** — `pi-workflow-engine` (runs are agent-walked through the stage contracts, not scripted); available for fan-out experiments later.
 
 ## Operational notes from the first run

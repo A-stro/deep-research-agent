@@ -1,0 +1,3 @@
+  ok    gate chain: plan approved in order
+  ok    evidence: 30 record(s), 5 gap(s), every question accounted for
+All deterministic checks passed. Schema validity ≠ source truth — the evidence-auditor and human gates still own that.
