@@ -1,0 +1,16 @@
+[package]
+name = "validate-cli"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+
+[[bin]]
+name = "validate"
+path = "src/main.rs"
+
+[dependencies]
+validate-core = { path = "../validate-core" }
+serde_json = "1.0"
+
+[dev-dependencies]
+tempfile = "3.8"

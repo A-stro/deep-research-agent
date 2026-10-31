@@ -1,0 +1,8 @@
+RUN COMPLETE — all artifacts validate, all gates approved in order.
+  ok    plan: 4 question(s), all covered by search strategy
+  ok    evidence: 18 record(s), 0 gap(s), every question accounted for
+  ok    verification: 18 result(s), contradictions adjudicated, every question verified
+  ok    report: 5 finding(s), 17 verified/partial result(s) behind the chain, all questions analyzed
+  ok    report: report.md rendering exists (05-report.md)
+  ok    gate chain: plan → evidence → verification → report approved in order
+All deterministic checks passed. Schema validity ≠ source truth — the evidence-auditor and human gates still own that.

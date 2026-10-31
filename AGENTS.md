@@ -10,7 +10,7 @@ An evidence-driven research workspace: a query enters, four human-gated stages t
 | `_shared/` | factory: schemas (the authoritative contracts), design principles, verified stack state, roadmap |
 | `_templates/` | blank starters — a new thing is a copy, not a blank page |
 | `runs/` | the archive: one folder per completed run, catalogued in `index.md` |
-| `tools/` | `validate.mjs` — the deterministic boundary (zero-dependency Node) |
+| `tools/` | Rust validator (`validate` binary) — the deterministic boundary (modular Rust, zero runtime deps) |
 
 ## Route by what just happened
 
@@ -18,9 +18,9 @@ An evidence-driven research workspace: a query enters, four human-gated stages t
 |---|---|---|
 | starting a research run | `stages/01_plan/CONTEXT.md` | human approves the plan gate |
 | a stage's gate is approved | the next numbered stage's CONTEXT.md | the human reads the output |
-| asked for status | `node tools/validate.mjs status` | report what exists |
-| a run passed `validate.mjs run` | copy `_templates/run/` → `runs/<run_id>/`, fill the manifest, add the `runs/index.md` line, clear `stages/*/output/` | the human confirms the archive |
-| changing a contract | `_shared/schemas/` — update the schema and any validator rule the same day | nothing else moves until `validate.mjs` is green |
+| asked for status | `cargo run --manifest-path tools/Cargo.toml --bin validate -- status` | report what exists |
+| a run passed `validate run` | copy `_templates/run/` → `runs/<run_id>/`, fill the manifest, add the `runs/index.md` line, clear `stages/*/output/` | the human confirms the archive |
+| changing a contract | `_shared/schemas/` — update the schema and any validator rule the same day | nothing else moves until `validate run` is green |
 | asking where the project is going | `_shared/roadmap.md` | nothing — read-only reference |
 
 ## The one rule

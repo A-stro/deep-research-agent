@@ -1,0 +1,4 @@
+  ok    gate chain: plan → evidence → verification approved in order
+  ok    report: 11 finding(s), 17 verified/partial result(s) behind the chain, all questions analyzed
+  ok    report: report.md rendering exists (05-report.md)
+All deterministic checks passed. Schema validity ≠ source truth — the evidence-auditor and human gates still own that.

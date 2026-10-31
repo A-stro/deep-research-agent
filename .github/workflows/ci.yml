@@ -1,0 +1,19 @@
+name: ci
+on:
+  push:
+    branches: [main, integration/rust-validator-security-contract]
+  pull_request:
+jobs:
+  test:
+    strategy:
+      matrix:
+        toolchain: [stable, "1.85.0"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy
+      - run: cargo test --manifest-path tools/Cargo.toml
+      - run: cargo clippy --manifest-path tools/Cargo.toml --all-targets -- -D warnings
