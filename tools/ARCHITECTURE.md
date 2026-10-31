@@ -5,6 +5,8 @@
 **Author:** Advisor (GLM 5.3)  
 **Reviewers:** Coder (Nemotron 3.5 Super VL), Reviewer (MiniMax M3.1 Flash)
 
+**Source spec:** `tools/HANDOFF.md` — cited below as "the handoff brief" / "handoff §N".
+
 ---
 
 ## 1. Project Root Discovery
