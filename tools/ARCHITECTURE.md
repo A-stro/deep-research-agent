@@ -96,7 +96,7 @@ Only these seven deviations are permitted. Each must have a regression test.
 | 4 | **Archive paths canonicalized** | Lexical `resolve`/`relative` check only — a symlink under `runs/` pointing outside passes and validates | `fs::canonicalize` → require resolved path strictly under canonical `<ROOT>/runs`; symlink escapes are rejected. Exit codes match the oracle (policy → 2); the escape message text stays Rust's `archive directory not found: …` instead of the oracle's `must be under …`. |
 | 5 | **Archive never falls back** | Missing artifact → might read live stages | Missing archive artifact = failure; never reads `stages/*/output/`. In live-stage commands the missing artifact adds `<stage>: artifact missing, chain broken` to the shared accumulator — identical to the oracle, which also emits it. Archive-mode counting differs: see row 7. |
 | 6 | **Archive accepts relative paths** | Rejects any relative argument *before* resolving it: `archive directory must be an absolute path under <ROOT>/runs: <arg>` (exit 2) | Canonicalizes a relative argument against cwd and accepts it when it lands strictly under canonical `<ROOT>/runs` (exit 0 if the archive validates). Confinement is unchanged — the resolved path must be under *this* project's `runs/`, so a same-named directory elsewhere still cannot validate as this repo's archive; the difference is only that a relative *spelling* of an in-bounds path is accepted. The documented invocation (`stages/04_report/CONTEXT.md`) always uses the absolute `$PWD/runs/<run_id>`, so the accepted spelling is convenience, not a documented path. Regression: `N04-archive-relative`. |
-| 7 | **Archive missing-artifact failure count** | 1 failure — with an archive artifact missing, the oracle leaves `OUT.<stage>` pointed at the live `stages/*/output/` path, so its loaders and gate chain read the live fixtures and record only `<name>: missing from archive` | 2 failures — archive mode never reads live stages (row 5), so the missing archive artifact also breaks the gate chain: `<stage>: artifact missing, chain broken`. In the real post-archive state (live `output/` cleared) the oracle emits the same two failures; the Rust count matches the oracle's end-state, not its mid-flight fixture state where live stages are still populated. Regression: `N09-archive-no-artifact`. |
+| 7 | **Archive missing-artifact failure count** | With an archive artifact missing, the oracle leaves `OUT.<stage>` pointed at the live `stages/*/output/` path, so its count depends on live state: **1 failure** when live stages are populated (`<name>: missing from archive` only — its loaders read the live fixtures), **3 failures** when they are cleared (adds `verification: no artifact — stage 03 not run` and `verification: artifact missing, chain broken`) | **2 failures in both live states** — archive mode never reads live stages (row 5), so the missing archive artifact always breaks the gate chain: `<stage>: artifact missing, chain broken`. The counts never converge: the oracle's live loader always emits the extra `no artifact` line when its live path is missing. The deviation is the count difference itself — verified against the frozen oracle 2026-10-31 in both live states (1-vs-2 populated, 3-vs-2 cleared). Regression: `N09-archive-no-artifact`. |
 
 **No other deviations.** If another discrepancy is found during implementation, stop and escalate to Advisor. Rows 6–7 were promoted on 2026-10-31 after a live re-run of both committed matrices against the refrozen oracle (`tools/oracle/validate.mjs`, sha256 `97850254…`): each was previously justified only in prose, and both are now table rows with regression cases.
 
@@ -321,7 +321,7 @@ members = ["validate-core", "validate-cli"]
 name = "validate-core"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.85"
 
 [dependencies]
 serde_json = "1.0"
@@ -335,7 +335,7 @@ regex = "1.10"
 name = "validate-cli"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.85"
 
 [[bin]]
 name = "validate"
@@ -354,7 +354,7 @@ assert_cmd = "2.0"  # only if needed for exact output capture
 
 **Install command:** `cargo install --path tools/validate-cli`
 
-**MSRV:** `rust-version = "1.75"` in all `Cargo.toml` files.
+**MSRV:** `rust-version = "1.85"` in all `Cargo.toml` files. The floor is set by the locked dependency tree, not the port's own code: `serde_json` (`preserve_order`, per §2) → `indexmap` → `hashbrown 0.17` (declares 1.85), and dev-dependency `tempfile` → `getrandom 0.4` (declares 1.85). CI runs the pinned 1.85.0 toolchain alongside stable, so the claim stays verified on every push. An earlier revision claimed 1.75; that was wrong and is corrected here (reviewer catch, 2026-10-31).
 
 **Binary size target:** < 10 MB release.
 
@@ -444,7 +444,7 @@ Negative/edge cases: inline fixtures in `parity.rs` using `tempfile`.
 | Cross-check ambiguity | Advisor + Reviewer | Agreed behavior + regression fixture |
 | Security finding | Reviewer → Advisor | Immediate; archive confinement, schema reads, panic/DoS |
 | Parity failure | Coder → Advisor | Exact command, fixture, Node output, Rust output, diff |
-| Rust 1.75 dep conflict | Coder → Advisor | Pin or justified MSRV change |
+| Rust MSRV dep conflict (floor 1.85) | Coder → Advisor | Pin or justified MSRV change |
 | Binary > 10 MB | Coder → Advisor | Dependency weight analysis + replacement plan |
 | Cloud toolchain failure | Coder → Advisor | Exact command + error; no local fallback |
 

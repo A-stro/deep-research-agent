@@ -2,7 +2,7 @@
 name = "validate-core"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.85"
 
 [dependencies]
 # preserve_order: JSON objects iterate in declaration order, which the
