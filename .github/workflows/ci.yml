@@ -14,5 +14,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
+          components: clippy
       - run: cargo test --manifest-path tools/Cargo.toml
       - run: cargo clippy --manifest-path tools/Cargo.toml --all-targets -- -D warnings
