@@ -289,3 +289,222 @@ fn negative_edge_matrix_matches_oracle_expectations() {
         );
     }
 }
+
+fn replace_member_with_external_symlink(run_dir: &Path, outside_dir: &Path, member: &str) {
+    let member_path = run_dir.join(member);
+    let outside_path = outside_dir.join(member);
+    if member_path.exists() {
+        fs::copy(&member_path, &outside_path).expect("copy member outside archive");
+        fs::remove_file(&member_path).expect("remove in-archive member");
+    } else {
+        fs::write(&outside_path, "outside archive\n").expect("write outside member");
+    }
+    std::os::unix::fs::symlink(&outside_path, &member_path).expect("symlink escaping archive");
+}
+
+#[test]
+fn archive_member_symlink_escape_is_rejected() {
+    for member in [
+        "01-plan.json",
+        "02-evidence.json",
+        "03-verification.json",
+        "04-report.json",
+        "manifest.md",
+        "report.md",
+        "05-report.md",
+    ] {
+        let dir = build_fixture(RUN_A);
+        let root = dir.path().canonicalize().expect("canonical root");
+        let run_dir = root.join("runs").join(RUN_A);
+        let outside_dir = root.join("outside");
+        fs::create_dir_all(&outside_dir).expect("outside dir");
+
+        replace_member_with_external_symlink(&run_dir, &outside_dir, member);
+
+        let (code, stdout, stderr) = run_validate(
+            &root,
+            &[
+                "archive".to_string(),
+                run_dir.to_string_lossy().into_owned(),
+            ],
+        );
+
+        assert_eq!(code, Some(2), "escaping {member} must fail path policy");
+        assert!(
+            !stdout.contains("ARCHIVE VALID"),
+            "escaping {member} must never produce an archive-valid verdict: {stdout:?}"
+        );
+        assert!(
+            stderr.contains(&format!("{member}: symlink escapes archive directory")),
+            "failure must identify the escaping member: {stderr:?}"
+        );
+    }
+}
+
+#[test]
+fn archive_member_policy_errors_follow_known_member_order() {
+    let dir = build_fixture(RUN_A);
+    let root = dir.path().canonicalize().expect("canonical root");
+    let run_dir = root.join("runs").join(RUN_A);
+    let outside_dir = root.join("outside");
+    fs::create_dir_all(&outside_dir).expect("outside dir");
+
+    for member in [
+        "01-plan.json",
+        "02-evidence.json",
+        "03-verification.json",
+        "04-report.json",
+        "manifest.md",
+        "report.md",
+        "05-report.md",
+    ] {
+        replace_member_with_external_symlink(&run_dir, &outside_dir, member);
+    }
+
+    let (code, stdout, stderr) = run_validate(
+        &root,
+        &[
+            "archive".to_string(),
+            run_dir.to_string_lossy().into_owned(),
+        ],
+    );
+
+    assert_eq!(code, Some(2), "escaping members must fail path policy");
+    assert!(!stdout.contains("ARCHIVE VALID"), "stdout: {stdout:?}");
+    let messages: Vec<&str> = stderr
+        .lines()
+        .filter(|line| line.contains(": symlink escapes archive directory"))
+        .collect();
+    assert_eq!(
+        messages,
+        vec![
+            "01-plan.json: symlink escapes archive directory",
+            "02-evidence.json: symlink escapes archive directory",
+            "03-verification.json: symlink escapes archive directory",
+            "04-report.json: symlink escapes archive directory",
+            "manifest.md: symlink escapes archive directory",
+            "report.md: symlink escapes archive directory",
+            "05-report.md: symlink escapes archive directory",
+        ],
+        "policy errors must follow the known-member declaration order"
+    );
+}
+
+#[test]
+fn dangling_archive_member_symlink_is_a_policy_failure() {
+    let dir = build_fixture(RUN_A);
+    let root = dir.path().canonicalize().expect("canonical root");
+    let run_dir = root.join("runs").join(RUN_A);
+    let member_path = run_dir.join("01-plan.json");
+    fs::remove_file(&member_path).expect("remove in-archive member");
+    std::os::unix::fs::symlink(run_dir.join("missing-plan.json"), &member_path)
+        .expect("create dangling member symlink");
+
+    let (code, stdout, stderr) = run_validate(
+        &root,
+        &[
+            "archive".to_string(),
+            run_dir.to_string_lossy().into_owned(),
+        ],
+    );
+
+    assert_eq!(code, Some(2), "dangling member must fail path policy");
+    assert!(!stdout.contains("ARCHIVE VALID"), "stdout: {stdout:?}");
+    assert!(
+        stderr.contains("01-plan.json: symlink cannot be resolved"),
+        "stderr: {stderr:?}"
+    );
+}
+
+#[test]
+fn archive_member_symlink_to_archive_directory_is_rejected() {
+    let dir = build_fixture(RUN_A);
+    let root = dir.path().canonicalize().expect("canonical root");
+    let run_dir = root.join("runs").join(RUN_A);
+    let member_path = run_dir.join("01-plan.json");
+    fs::remove_file(&member_path).expect("remove in-archive member");
+    std::os::unix::fs::symlink(&run_dir, &member_path).expect("create directory symlink");
+
+    let (code, stdout, stderr) = run_validate(
+        &root,
+        &[
+            "archive".to_string(),
+            run_dir.to_string_lossy().into_owned(),
+        ],
+    );
+
+    assert_eq!(code, Some(2), "directory member must fail path policy");
+    assert!(!stdout.contains("ARCHIVE VALID"), "stdout: {stdout:?}");
+    assert!(
+        stderr.contains("01-plan.json: symlink resolves to archive directory"),
+        "stderr: {stderr:?}"
+    );
+}
+
+#[test]
+fn evidence_cross_check_failure_order_is_deterministic() {
+    let dir = build_fixture(RUN_A);
+    let root = dir.path().canonicalize().expect("canonical root");
+    let evidence_path = root
+        .join("stages/02_research/output/evidence.json")
+        .to_path_buf();
+    let mut evidence: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&evidence_path).expect("read evidence"))
+            .expect("parse evidence");
+    let records = evidence["records"].as_array_mut().expect("records array");
+    records.retain(|record| record["question_id"] == "RQ1");
+    evidence["gaps"] = serde_json::Value::Array(Vec::new());
+    fs::write(
+        &evidence_path,
+        serde_json::to_vec_pretty(&evidence).expect("serialize evidence"),
+    )
+    .expect("write evidence");
+
+    let expected = "  FAIL  evidence: question RQ2 has neither evidence nor a recorded gap\n  FAIL  evidence: question RQ3 has neither evidence nor a recorded gap\n  FAIL  evidence: question RQ4 has neither evidence nor a recorded gap\n3 check(s) failed.\n";
+
+    for _ in 0..32 {
+        let (code, stdout, stderr) = run_validate(&root, &["evidence".to_string()]);
+        assert_eq!(code, Some(1), "partial evidence must fail");
+        assert_eq!(
+            stdout, "  ok    gate chain: plan approved in order\n",
+            "failure output must keep the successful gate note on stdout"
+        );
+        assert_eq!(
+            stderr, expected,
+            "cross-check failures must follow research-question declaration order"
+        );
+    }
+}
+
+#[test]
+fn plan_cross_check_failure_order_is_deterministic() {
+    let dir = build_fixture(RUN_A);
+    let root = dir.path().canonicalize().expect("canonical root");
+    let plan_path = root.join("stages/01_plan/output/plan.json").to_path_buf();
+    let mut plan: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&plan_path).expect("read plan"))
+            .expect("parse plan");
+    let strategies = plan["search_strategy"]
+        .as_array_mut()
+        .expect("search strategy array");
+    let first = strategies[0].clone();
+    strategies.clear();
+    strategies.push(first);
+    fs::write(
+        &plan_path,
+        serde_json::to_vec_pretty(&plan).expect("serialize plan"),
+    )
+    .expect("write plan");
+
+    let expected = "  FAIL  plan: question RQ2 has no search strategy\n  FAIL  plan: question RQ3 has no search strategy\n  FAIL  plan: question RQ4 has no search strategy\n3 check(s) failed.\n";
+
+    for _ in 0..32 {
+        let (code, stdout, stderr) = run_validate(&root, &["plan".to_string()]);
+        assert_eq!(code, Some(1), "partial plan must fail");
+        assert_eq!(stdout, "", "failure output must stay on stderr");
+        assert_eq!(
+            stderr, expected,
+            "cross-check failures must follow research-question declaration order"
+        );
+    }
+}

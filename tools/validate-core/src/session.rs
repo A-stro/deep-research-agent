@@ -9,7 +9,7 @@
 //! archive` failure plus the downstream gate-chain break, not a silent
 //! read of the live stage files.
 
-use crate::archive::canonicalize_archive_path;
+use crate::archive::{canonicalize_archive_path, ArchiveContext};
 use crate::cross_check::{
     check_evidence_cross, check_gates_in_order, check_plan_cross, check_report_cross,
     check_verification_cross, js_value, truthy, GateDocs,
@@ -34,7 +34,7 @@ pub enum Outcome {
 
 enum Mode {
     Live,
-    Archive(PathBuf),
+    Archive(ArchiveContext),
 }
 
 const ARCHIVE_ARTIFACTS: [(&str, &str); 4] = [
@@ -75,8 +75,16 @@ impl Session {
     }
 
     /// Oracle order: usage → path policy → existence → validation.
-    pub fn resolve_archive_path(&self, arg: &str) -> Result<PathBuf, (String, i32)> {
-        canonicalize_archive_path(arg, &self.root)
+    /// Known members are resolved before validation so no archive content
+    /// outside the canonical archive directory can be read.
+    pub fn resolve_archive_path(&self, arg: &str) -> Result<ArchiveContext, (String, i32)> {
+        let dir = canonicalize_archive_path(arg, &self.root)?;
+        let member_names = ARCHIVE_ARTIFACTS.iter().map(|(_, name)| *name).chain([
+            "manifest.md",
+            "report.md",
+            "05-report.md",
+        ]);
+        ArchiveContext::new(&dir, member_names).map_err(|errors| (errors.join("\n"), 2))
     }
 
     // ---------- loaders (oracle `loadJson` / `OUT`) ----------
@@ -91,17 +99,23 @@ impl Session {
         }
     }
 
-    fn archive_path(&self, stage: &str) -> PathBuf {
-        let Mode::Archive(dir) = &self.mode else {
+    fn archive_path(&self, stage: &str) -> Option<PathBuf> {
+        let Mode::Archive(archive) = &self.mode else {
             unreachable!("archive_path only used in Archive mode")
         };
-        dir.join(
-            ARCHIVE_ARTIFACTS
-                .iter()
-                .find(|(k, _)| *k == stage)
-                .unwrap()
-                .1,
-        )
+        let name = ARCHIVE_ARTIFACTS
+            .iter()
+            .find(|(key, _)| *key == stage)
+            .unwrap()
+            .1;
+        archive.member(name).map(Path::to_path_buf)
+    }
+
+    fn archive_member(&self, name: &str) -> Option<&Path> {
+        let Mode::Archive(archive) = &self.mode else {
+            unreachable!("archive_member only used in Archive mode")
+        };
+        archive.member(name)
     }
 
     /// Read + parse one stage doc, mirroring oracle `loadJson(path, label)`:
@@ -110,7 +124,7 @@ impl Session {
     fn load_stage(&mut self, stage: &str) -> Option<Value> {
         let path = match &self.mode {
             Mode::Live => self.stage_path(stage),
-            Mode::Archive(_) => self.archive_path(stage),
+            Mode::Archive(_) => self.archive_path(stage)?,
         };
         if !path.exists() {
             return None;
@@ -150,18 +164,22 @@ impl Session {
     /// then `05-report.md`, and names whichever file it found. Runs
     /// unconditionally in `stageReport`, even after other errors.
     fn md_rendering_check(&mut self) {
-        let dir = match &self.mode {
-            Mode::Live => self.stage_path("report"),
-            Mode::Archive(_) => self.archive_path("report"),
+        let found = match &self.mode {
+            Mode::Live => {
+                let dir = match self.stage_path("report").parent() {
+                    Some(dir) => dir.to_path_buf(),
+                    None => return,
+                };
+                ["report.md", "05-report.md"]
+                    .iter()
+                    .find(|name| dir.join(name).exists())
+                    .map(|name| name.to_string())
+            }
+            Mode::Archive(archive) => ["report.md", "05-report.md"]
+                .iter()
+                .find(|name| archive.member(name).is_some())
+                .map(|name| name.to_string()),
         };
-        let dir = match dir.parent() {
-            Some(d) => d.to_path_buf(),
-            None => return,
-        };
-        let found = ["report.md", "05-report.md"]
-            .iter()
-            .find(|name| dir.join(name).exists())
-            .map(|name| name.to_string());
         match found {
             Some(name) => self
                 .notes
@@ -442,8 +460,9 @@ impl Session {
     /// Archive validation — oracle `validateArchive` in order:
     /// artifact existence scan → folder name → manifest → four stage
     /// validators → run_id-vs-folder loop → gate chain → verdict.
-    pub fn validate_archive(&mut self, run_dir: &Path) -> Result<Outcome, String> {
-        self.mode = Mode::Archive(run_dir.to_path_buf());
+    pub fn validate_archive(&mut self, archive: ArchiveContext) -> Result<Outcome, String> {
+        let run_dir = archive.dir().to_path_buf();
+        self.mode = Mode::Archive(archive);
         let run_id = run_dir
             .file_name()
             .and_then(OsStr::to_str)
@@ -452,8 +471,8 @@ impl Session {
 
         // 1. Existence scan (oracle lines 219–223): fail-and-skip per
         //    artifact; no live-stage fallback anywhere.
-        for (_, name) in ARCHIVE_ARTIFACTS {
-            if !run_dir.join(name).exists() {
+        for (stage, name) in ARCHIVE_ARTIFACTS {
+            if self.archive_path(stage).is_none() {
                 self.errors.push(format!("{}: missing from archive", name));
             }
         }
@@ -467,7 +486,7 @@ impl Session {
         }
         // 3. Manifest (no invented `present` note — the oracle never
         //    pushes one).
-        if !run_dir.join("manifest.md").exists() {
+        if self.archive_member("manifest.md").is_none() {
             self.errors
                 .push("manifest.md: missing from archive".to_string());
         }

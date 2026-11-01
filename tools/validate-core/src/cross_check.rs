@@ -56,17 +56,31 @@ fn str_of<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
     v.get(key).and_then(Value::as_str)
 }
 
+/// Preserve JavaScript `Set` insertion order. The oracle reports cross-check
+/// failures by iterating these sets, so hash iteration order must never
+/// become observable.
+fn ordered_unique<'a>(values: impl Iterator<Item = &'a str>) -> Vec<&'a str> {
+    let mut seen = HashSet::new();
+    let mut ordered = Vec::new();
+    for value in values {
+        if seen.insert(value) {
+            ordered.push(value);
+        }
+    }
+    ordered
+}
+
 /// ADR §6.1 `checkPlanCross`.
 pub fn check_plan_cross(errors: &mut Vec<String>, notes: &mut Vec<String>, plan: &Value) {
     let before = errors.len();
     let rqs = array_of(plan, "research_questions");
-    let rq_ids: HashSet<&str> = rqs.iter().filter_map(|q| str_of(q, "id")).collect();
+    let rq_ids = ordered_unique(rqs.iter().filter_map(|q| str_of(q, "id")));
     if rq_ids.len() != rqs.len() {
         errors.push("plan: duplicate research question ids".to_string());
     }
     for s in array_of(plan, "search_strategy") {
         if let Some(qid) = str_of(s, "question_id") {
-            if !rq_ids.contains(qid) {
+            if !rq_ids.contains(&qid) {
                 errors.push(format!(
                     "plan: search_strategy references unknown question {}",
                     qid
@@ -100,15 +114,16 @@ pub fn check_evidence_cross(
     ev: &Value,
 ) {
     let before = errors.len();
-    let rq_ids: HashSet<&str> = array_of(plan, "research_questions")
-        .iter()
-        .filter_map(|q| str_of(q, "id"))
-        .collect();
+    let rq_ids = ordered_unique(
+        array_of(plan, "research_questions")
+            .iter()
+            .filter_map(|q| str_of(q, "id")),
+    );
     let mut evidence_ids = HashSet::new();
     for r in array_of(ev, "records") {
         let question_str = str_of(r, "question_id");
         let unknown = match question_str {
-            Some(qid) => !rq_ids.contains(qid),
+            Some(qid) => !rq_ids.contains(&qid),
             None => true,
         };
         if unknown {
