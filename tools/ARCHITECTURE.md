@@ -67,6 +67,7 @@ plan.artifact: expected one of [ResearchPlan], got "…"
 The Node implementation uses a single shared `errors` array and `notes` array per command invocation. Preserve this exactly:
 
 - **Accumulator:** One `errors: Vec<String>`, one `notes: Vec<String>` per command run.
+- **Set iteration order:** When the oracle iterates a JavaScript `Set`, Rust must preserve that set's insertion order. Never expose `HashSet` iteration order in validator output.
 - **Validation order:** Schema validation first (populates `errors`), then cross-checks (populates `errors` and conditionally `notes`).
 - **Cross-check notes:** A cross-check success note is only added when `errors.is_empty()` at that point. This matches the oracle's `if (errors.length === before) ok(...)` pattern.
 - **Output order on exit 0:**
@@ -88,7 +89,7 @@ The Node implementation uses a single shared `errors` array and `notes` array pe
 
 ## 4. Intentional Deviations from Node Oracle
 
-Only these seven deviations are permitted. Each must have a regression test.
+Only these eight deviations are permitted. Each must have a regression test.
 
 | # | Deviation | Node Behavior | Rust Behavior |
 |---|-----------|---------------|---------------|
@@ -99,8 +100,9 @@ Only these seven deviations are permitted. Each must have a regression test.
 | 5 | **Archive never falls back** | Missing artifact → might read live stages | Missing archive artifact = failure; never reads `stages/*/output/`. In live-stage commands the missing artifact adds `<stage>: artifact missing, chain broken` to the shared accumulator — identical to the oracle, which also emits it. Archive-mode counting differs: see row 7. |
 | 6 | **Archive accepts relative paths** | Rejects any relative argument *before* resolving it: `archive directory must be an absolute path under <ROOT>/runs: <arg>` (exit 2) | Canonicalizes a relative argument against cwd and accepts it when it lands strictly under canonical `<ROOT>/runs` (exit 0 if the archive validates). Confinement is unchanged — the resolved path must be under *this* project's `runs/`, so a same-named directory elsewhere still cannot validate as this repo's archive; the difference is only that a relative *spelling* of an in-bounds path is accepted. The documented invocation (`stages/04_report/CONTEXT.md`) always uses the absolute `$PWD/runs/<run_id>`, so the accepted spelling is convenience, not a documented path. Regression: `N04-archive-relative`. |
 | 7 | **Archive missing-artifact failure count** | With an archive artifact missing, the oracle leaves `OUT.<stage>` pointed at the live `stages/*/output/` path, so its count depends on live state: **1 failure** when live stages are populated (`<name>: missing from archive` only — its loaders read the live fixtures), **3 failures** when they are cleared (adds `verification: no artifact — stage 03 not run` and `verification: artifact missing, chain broken`) | **2 failures in both live states** — archive mode never reads live stages (row 5), so the missing archive artifact always breaks the gate chain: `<stage>: artifact missing, chain broken`. The counts never converge: the oracle's live loader always emits the extra `no artifact` line when its live path is missing. The deviation is the count difference itself — verified against the frozen oracle 2026-10-31 in both live states (1-vs-2 populated, 3-vs-2 cleared). Regression: `N09-archive-no-artifact`. |
+| 8 | **Archive members confined** | A symlink used as an archive artifact can point outside the archive and is read as external content | Canonicalize every known archive member before validation and require its target to be a regular file strictly below the canonical archive directory. Escaping, dangling, and directory-target members are rejected before their content is read; policy failures exit 2. Regressions: `archive_member_symlink_escape_is_rejected`, `archive_member_policy_errors_follow_known_member_order`, `dangling_archive_member_symlink_is_a_policy_failure`, `archive_member_symlink_to_archive_directory_is_rejected`. |
 
-**No other deviations.** If another discrepancy is found during implementation, stop and escalate to Advisor. Rows 6–7 were promoted on 2026-10-31 after a live re-run of both committed matrices against the refrozen oracle (`tools/oracle/validate.mjs`, sha256 `97850254…`): each was previously justified only in prose, and both are now table rows with regression cases.
+**No other deviations.** If another discrepancy is found during implementation, stop and escalate to Advisor. Rows 6–7 were promoted on 2026-10-31 after a live re-run of both committed matrices against the refrozen oracle (`tools/oracle/validate.mjs`, sha256 `97850254…`): each was previously justified only in prose, and both are now table rows with regression cases. Row 8 records the archive-member confinement correction after the merged implementation was found to follow member symlinks outside the canonical archive directory.
 
 **Supplementary explicit-error (handoff §6.5, same family as #1/#2):** the oracle's `loadJson` returns null *silently* for a missing file, so `file <missing>` prints the generic success block and exits 0. Per handoff §6.5 ("concise file-not-found failure; exit 1") the port prints `<path>: file not found` and exits 1. Locked by golden case `N12-file-missing-file`. The type-failure wording follows JS `typeof` exactly (numbers render `number` unless the expected type is `integer`, and `typeof null` is `"object"`), so those messages are parity, not deviation.
 
@@ -111,7 +113,8 @@ Only these seven deviations are permitted. Each must have a regression test.
 - Resolve the provided archive path with `std::fs::canonicalize` (follows symlinks; a relative argument is resolved against the current directory, so relative `runs/<id>` paths are accepted when they land under the canonical runs dir — deviation 6).
 - Resolve the project root's `runs` directory with `canonicalize`.
 - Require the archive path to start with the canonical `runs` path + path separator.
-- Reject if canonicalization fails, if path escapes, or if the archive path sits outside `runs`; symlinked escapes are rejected the same way. Policy failures exit 2 **before** existence checks (oracle order: usage → path policy → existence → validation).
+- Canonicalize every known archive member before reading it: the four JSON artifacts, `manifest.md`, `report.md`, and `05-report.md`. Require each canonical member target to be a regular file strictly below the canonical archive directory.
+- Reject if canonicalization fails, if path escapes, or if the archive path sits outside `runs`; symlinked directory escapes are rejected the same way. Reject a member before reading it when its canonical target escapes the archive, its symlink is dangling, or its target is a directory. Policy failures exit 2 **before** existence checks (oracle order: usage → path policy → existence → validation). When several members fail, report them in known-member declaration order.
 
 **Error messages (oracle text; Rust text):**
 - Missing arg: `usage: node tools/validate.mjs archive <absolute path under <ROOT>/runs>` → Rust: `usage: validate archive <runs/<run_id> directory>` (exit 2 both; deviation 1)
@@ -121,6 +124,9 @@ Only these seven deviations are permitted. Each must have a regression test.
 - Bad folder name: `archive folder name "…" does not match ^YYYY-MM-DD-slug$` (exit 1)
 - Missing manifest: `manifest.md: missing from archive` (exit 1)
 - Missing artifact: `<name>: missing from archive` (exit 1)
+- Escaping member: `<member>: symlink escapes archive directory` (exit 2; deviation 8)
+- Dangling member symlink: `<member>: symlink cannot be resolved` (exit 2; deviation 8)
+- Member symlink to the archive directory: `<member>: symlink resolves to archive directory` (exit 2; deviation 8)
 - Run ID mismatch: `run_id "…" does not match archive folder name "…"` (exit 1)
 
 ---
@@ -134,14 +140,14 @@ Port the four check functions and `checkGatesInOrder` without semantic changes.
 - Fail if duplicate RQ IDs
 - For each `search_strategy`: fail if `question_id` not in `rq`
 - `covered = set of search_strategy[].question_id`
-- Fail if any `rq` not in `covered`
+- Fail if any `rq` not in `covered`, iterating `rq` in `research_questions` declaration order
 - Success: `plan: <N> question(s), all covered by search strategy`
 
 ### 6.2 `checkEvidenceCross(plan, ev)`
 - `rq = set of plan.research_questions[].id`
 - For each record: fail if `question_id` not in `rq`; fail if duplicate `evidence_id`
 - `gapQs = set of ev.gaps[].question_id`
-- For each `rq`: fail if no record with that `question_id` AND not in `gapQs`
+- For each `rq`, in `research_questions` declaration order: fail if no record with that `question_id` AND not in `gapQs`
 - Success: `evidence: <N> record(s), <M> gap(s), every question accounted for`
 
 ### 6.3 `checkVerificationCross(ev, ver)`
@@ -269,7 +275,7 @@ Before deleting Node oracle:
 
 - **Differential matrices (live):** run A — 44 cases: 37 identical + 7 sanctioned (each fingerprint maps to a §4 deviation; `archive: relative path` and `archive: missing artifact` were promoted to rows 6–7 on 2026-10-31 after a live re-run against the refrozen oracle showed them as the only residue beyond the listed fingerprints — both now report SANCTIONED instead of FAIL); run B + corrupt/md/symlink edges — 24 cases: 23 identical + 1 sanctioned (symlink escape, row 4). One real divergence found and fixed during generation: the `type`-failure wording now reproduces JS `typeof` (numbers render `number` unless the expected type is `integer`; `typeof null` is `object`) while acceptance stays normal JSON semantics.
 - **Goldens:** 14 positive cases at `tools/validate-cli/tests/fixtures/<run_id>/<cmd>.{stdout,stderr,exit}`; 29 negative/edge cases in `tools/validate-cli/tests/neg_expectations.rs` (inline literals), including every sanctioned fingerprint and the handoff §6.5 minimum matrix. Both sides normalize the canonical fixture root to `<ROOT>`.
-- **Node-free proof:** `cargo test` passes with `node` absent from `PATH`; the suite runs only the freshly built `validate` binary against committed fixtures plus inline expectations. 43 parity assertions in `tools/validate-cli/tests/parity.rs` + 9 core unit tests.
+- **Node-free proof:** `cargo test` passes with `node` absent from `PATH`; the suite runs only the freshly built `validate` binary against committed fixtures plus inline expectations. The suite also has dedicated Rust-only regressions for archive-member symlink confinement and insertion-ordered plan/evidence cross-check failures.
 - **Regeneration:** while the oracle existed, `tools/validate-cli/tests/generate-goldens.zsh` ran both binaries per case and recorded the Rust output; sanctioned cases are listed in its SANCTIONS map. Positive goldens and negative expectations regenerate **only with the oracle present** — the RUST output is the expectation, and identity-vs-oracle is re-proven per unsanctioned case at generation time. The oracle is deleted after goldening; recover `tools/oracle/validate.mjs` from git history if goldens ever need regenerating.
 
 ---

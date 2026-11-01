@@ -82,7 +82,7 @@ These are the only permitted deviations from the Node oracle. Implement them del
 1. **Usage errors are explicit.** Missing `file` arguments or a missing input file should produce a concise usage/file error and a nonzero status rather than the Node implementation’s accidental success/deprecation-warning behavior. The intended contract is exit 2 for missing arguments and exit 1 for a missing file.
 2. **Schema-not-found is deterministic.** Print one concise stderr line beginning `schema not found:` and exit 1. Do not emit a panic backtrace.
 3. **JSON parse failures use a stable prefix.** Preserve `<path>: not valid JSON`; the native parser’s trailing explanation may differ.
-4. **Archive paths are canonicalized.** Resolve the real path and require it to remain under the canonical `<ROOT>/runs` directory. Reject symlink escapes. Lexical confinement alone is insufficient.
+4. **Archive paths and members are canonicalized.** Resolve the real archive path and require it to remain under the canonical `<ROOT>/runs` directory. Canonicalize each known archive member and require its target to be a regular file strictly below the canonical archive directory. Reject directory and member symlink escapes, dangling member symlinks, and member symlinks that resolve to a directory. Lexical confinement alone is insufficient.
 5. **Archive validation never falls back to live stage files.** A missing archive artifact is a failure in that archive, not permission to read `stages/*/output`.
 
 Do not “improve” any other semantics during this port. If another discrepancy is found, stop and get Advisor approval rather than silently changing behavior.
@@ -336,7 +336,10 @@ At minimum, lock these cases:
 | archive bad folder name | failure contains `does not match`; exit 1 |
 | archive missing manifest | failure contains `manifest.md: missing from archive`; exit 1 |
 | archive missing one artifact | failure names that artifact and never falls back to live stages; exit 1 |
-| archive symlink escaping `<ROOT>/runs` | rejected; nonzero |
+| archive directory symlink escaping `<ROOT>/runs` | rejected; nonzero |
+| archive member symlink escaping the canonical archive directory | rejected before the member is read; nonzero |
+| archive dangling member symlink | rejected before the member is read; nonzero |
+| archive member symlink resolving to the archive directory | rejected before the member is read; nonzero |
 | `file` invalid JSON | stable `not valid JSON` failure; exit 1 |
 | `file` missing file | concise file-not-found failure; exit 1 |
 | `file` missing arguments | usage error; exit 2 |
@@ -534,7 +537,7 @@ All criteria are required:
 | Schema message parity | enum/type/pattern/required/unknown-field/ref tests match stable oracle wording and paths |
 | Cross-check parity | exact success/failure messages and ordering for all four cross-check functions |
 | Gate-order parity | all pending-predecessor and pending-final cases match §5.5 |
-| Archive safety | relative/outside/missing/symlink/missing-artifact cases pass |
+| Archive safety | relative/outside/missing/directory-symlink/member-symlink/dangling-member-symlink/member-directory-symlink/missing-artifact cases pass |
 | Golden suite is Node-free | `cargo test` passes with Node unavailable on `PATH` |
 | No Node runtime dependency | `tools/validate.mjs` deleted; no package/wrapper scripts; tracked tree has no stale operational Node command |
 | Documentation updated | every file in §8 uses the Rust command consistently |

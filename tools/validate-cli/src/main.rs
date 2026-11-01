@@ -69,14 +69,14 @@ fn main() {
         // `archive`: on the approved/pending verdict it exits with only
         // the dedicated message, no generic block (ADR §3/§5).
         Command::Archive(arg) => {
-            let canonical = match session.resolve_archive_path(&arg) {
+            let archive = match session.resolve_archive_path(&arg) {
                 Ok(path) => path,
                 Err((msg, code)) => {
                     eprintln!("{}", msg);
                     std::process::exit(code);
                 }
             };
-            match session.validate_archive(&canonical) {
+            match session.validate_archive(archive) {
                 Ok(Outcome::ArchiveValid { message }) => {
                     println!("{}", message);
                     std::process::exit(0);
